@@ -25,7 +25,7 @@
       "narration": "Hoch in den Bergen liegt das Reich Aldoria. In der großen Halle leuchtet ein Stein: der Sternstein. Sein warmes Licht hält den langen Winter fern. Schon seit hundert Jahren beschützt der Sternstein das ganze Land. Heute Nacht hältst du Wache in der Halle. Du bist noch jung, aber du bist mutig. Plötzlich öffnet sich leise ein Fenster. Eine dunkle Gestalt schleicht herein. Sie trägt einen Umhang, grün wie Tannen. Auf ihrer Schulter sitzt ein schwarzer Rabe. Schnell greift die Gestalt nach dem Sternstein. Das Licht erlischt. Alles wird kalt und dunkel. Der Dieb ist verschwunden.",
       "audio": "scene_1.mp3",
       "anchor": "sternstein",
-      "map": { "x": 0.30, "y": 0.88 },
+      "map": { "x": 0.47, "y": 0.86 },
       "then": { "type": "next", "next": "scene_2" }
     },
     "scene_2": {
@@ -45,7 +45,7 @@
     "scene_3": {
       "narration": "Du verlässt die Halle. Vor dir liegt ein großer, dunkler Wald. Der Dieb ist hier entlanggelaufen. Aber welchen Weg hat er genommen? Du schaust dich ganz genau um. Findest du eine Spur?",
       "audio": "scene_3.mp3",
-      "map": { "x": 0.55, "y": 0.72 },
+      "map": { "x": 0.33, "y": 0.68 },
       "then": {
         "type": "skillcheck",
         "skill": "Wahrnehmung",
@@ -73,13 +73,13 @@
         "magier": { "text": "Bald kommst du an einen reißenden Fluss. Eine alte Brücke führt hinüber, aber sie ist zerbrochen. Auf der anderen Seite geht die Spur weiter. Du kannst zaubern. Du sprichst einen Zauber, und Eis wächst über das Wasser. Es wird zu einer glitzernden Brücke. Vorsichtig gehst du über das kalte Eis.", "audio": "scene_4_magier.mp3" },
         "barde": { "text": "Bald kommst du an einen reißenden Fluss. Eine alte Brücke führt hinüber, aber sie ist zerbrochen. Auf der anderen Seite geht die Spur weiter. Am Ufer sitzt ein alter Fährmann. Du lächelst und erzählst ihm von deinem wichtigen Auftrag. Der Fährmann nickt und bringt dich mit seinem Boot hinüber.", "audio": "scene_4_barde.mp3" }
       },
-      "map": { "x": 0.38, "y": 0.57 },
+      "map": { "x": 0.41, "y": 0.41 },
       "then": { "type": "next", "next": "scene_5" }
     },
     "scene_5": {
       "narration": "Der Weg führt in einen dunklen Teil des Waldes. Die Bäume sind hier alt und dicht. Es ist ganz still. Plötzlich siehst du zwei leuchtende Augen zwischen den Büschen. Traust du dich weiter?",
       "audio": "scene_5.mp3",
-      "map": { "x": 0.60, "y": 0.45 },
+      "map": { "x": 0.52, "y": 0.30 },
       "then": {
         "type": "skillcheck",
         "skill": "Mut",
@@ -106,7 +106,7 @@
       "narration": "Der Weg wird eng zwischen hohen Felsen. Plötzlich springt ein Kobold auf den Weg! Er ist klein und grün und hat krumme Zähne. Der Kobold kreischt: Niemand kommt hier vorbei! Er schwingt seinen Knüppel.",
       "audio": "scene_6.mp3",
       "anchor": "kobold",
-      "map": { "x": 0.40, "y": 0.32 },
+      "map": { "x": 0.45, "y": 0.21 },
       "then": {
         "type": "combat",
         "enemy": { "name": "Kobold", "hp": 9, "hitTarget": 9, "damage": 2, "anchor": "kobold" },
@@ -131,7 +131,7 @@
       "narration": "Es wird Abend im Wald. Du machst ein kleines Feuer und setzt dich auf einen Stein. Der Wald ist dunkel, aber das Feuer ist warm und hell. Ein kleiner Waldvogel setzt sich neben dich. Der Vogel zwitschert: Hab keine Angst. Du bist tapfer. Du schaffst das. Du isst ein Stück Brot und teilst es mit dem Vogel. Für einen Moment fühlst du dich nicht mehr allein. Morgen geht deine Reise weiter.",
       "audio": "scene_7.mp3",
       "anchor": "vogel",
-      "map": { "x": 0.62, "y": 0.20 },
+      "map": { "x": 0.40, "y": 0.13 },
       "then": {
         "type": "minigame",
         "kind": "comprehension",
@@ -146,7 +146,7 @@
       "narration": "Am nächsten Tag kommst du an den Rand des Waldes. Vor dir liegt ein hohes, dunkles Gebirge. Weit oben, auf einem schmalen Pfad, siehst du eine Gestalt mit grünem Umhang. Der Dieb! Auf seiner Schulter sitzt der schwarze Rabe. Der Dieb dreht sich kurz um und verschwindet hinter den Felsen. Der Sternstein ist ganz nah. Aber der Weg in die Berge ist weit und gefährlich. Du holst tief Luft und machst dich bereit. Dein Abenteuer hat gerade erst begonnen.",
       "audio": "scene_8.mp3",
       "anchor": "dieb",
-      "map": { "x": 0.48, "y": 0.09 },
+      "map": { "x": 0.47, "y": 0.06 },
       "then": {
         "type": "minigame",
         "kind": "comprehension",
