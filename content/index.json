@@ -1,0 +1,12 @@
+{
+  "episodes": [
+    {
+      "id": "episode-01",
+      "campaign": "sternstein",
+      "episode": 1,
+      "title": "Der gestohlene Sternstein",
+      "cover": "episode-01/cover.png"
+    }
+  ],
+  "characters": "characters.json"
+}

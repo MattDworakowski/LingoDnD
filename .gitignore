@@ -1,0 +1,13 @@
+.DS_Store
+node_modules/
+*.log
+
+# secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# expo / build artifacts
+.expo/
+dist/
+web-build/

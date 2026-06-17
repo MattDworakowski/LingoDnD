@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "LingoDnD",
+    "slug": "lingodnd",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "lingodnd",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#1b1510",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1b1510"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lingodnd.app"
+    },
+    "android": {
+      "package": "com.lingodnd.app"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "plugins": [
+      "expo-asset",
+      "expo-audio"
+    ]
+  }
+}

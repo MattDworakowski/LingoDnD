@@ -1,0 +1,33 @@
+{
+  "stats": ["staerke", "magie", "charisma"],
+  "baseHp": 10,
+  "classes": {
+    "krieger": {
+      "name": "Krieger",
+      "primary": "staerke",
+      "blurb": "Stark und mutig. Du kämpfst dich durch jedes Abenteuer.",
+      "stats": { "staerke": 2, "magie": 0, "charisma": 0 }
+    },
+    "magier": {
+      "name": "Magier",
+      "primary": "magie",
+      "blurb": "Du kannst zaubern. Magie hilft dir im Kampf und löst Rätsel.",
+      "stats": { "staerke": 0, "magie": 2, "charisma": 0 }
+    },
+    "barde": {
+      "name": "Barde",
+      "primary": "charisma",
+      "blurb": "Du redest geschickt. Oft musst du gar nicht kämpfen.",
+      "stats": { "staerke": 0, "magie": 0, "charisma": 2 }
+    }
+  },
+  "genders": ["junge", "maedchen"],
+  "avatars": {
+    "krieger_junge": { "prompt": "a brave young boy fighter in light leather armor, holding a small sword and a round shield, full body, standing", "file": "krieger_junge.png" },
+    "krieger_maedchen": { "prompt": "a brave young girl fighter in light leather armor, holding a small sword and a round shield, full body, standing", "file": "krieger_maedchen.png" },
+    "magier_junge": { "prompt": "a young boy wizard in a blue robe with a pointed hat, holding a wooden staff, full body, standing", "file": "magier_junge.png" },
+    "magier_maedchen": { "prompt": "a young girl wizard in a blue robe with a pointed hat, holding a wooden staff, full body, standing", "file": "magier_maedchen.png" },
+    "barde_junge": { "prompt": "a cheerful young boy bard in fine colorful clothes, holding a small lute, full body, standing", "file": "barde_junge.png" },
+    "barde_maedchen": { "prompt": "a cheerful young girl bard in fine colorful clothes, holding a small lute, full body, standing", "file": "barde_maedchen.png" }
+  }
+}

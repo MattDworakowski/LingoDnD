@@ -1,0 +1,157 @@
+{
+  "id": "episode-01",
+  "campaign": "sternstein",
+  "episode": 1,
+  "title": "Der gestohlene Sternstein",
+  "language": "de",
+  "startScene": "scene_1",
+  "revealImages": "afterAudio",
+  "coverPrompt": "a young hero standing at the edge of a great forest at golden dusk, looking toward distant misty mountains, a glowing star-stone shining in the sky, adventurous storybook mood",
+  "anchors": {
+    "sternstein": { "prompt": "a glowing magical star-shaped stone on a stone pedestal, warm golden light radiating", "file": "sternstein.png" },
+    "magier": { "prompt": "a kind old wizard with a long white beard, blue robe and a wooden staff", "file": "magier.png" },
+    "vogel": { "prompt": "a small friendly forest bird with bright feathers, perched on a branch", "file": "vogel.png" },
+    "eule": { "prompt": "a wise brown owl with big round eyes, perched on a branch", "file": "eule.png" },
+    "kobold": { "prompt": "a small green goblin with pointy ears and crooked teeth, holding a wooden club, grumpy but not scary, a little comical", "file": "kobold.png" },
+    "dieb": { "prompt": "a hooded thief in a forest-green cloak seen from behind on a narrow mountain path, a black raven on his shoulder", "file": "dieb.png" }
+  },
+  "items": {
+    "silberner_schluessel": { "name": "Silberner Schlüssel", "slot": "schluessel", "prompt": "a small ornate silver key", "file": "silberner_schluessel.png" }
+  },
+  "scenes": {
+    "scene_1": {
+      "narration": "Hoch in den Bergen liegt das Reich Aldoria. In der großen Halle leuchtet ein Stein: der Sternstein. Sein warmes Licht hält den langen Winter fern. Schon seit hundert Jahren beschützt der Sternstein das ganze Land. Heute Nacht hältst du Wache in der Halle. Du bist noch jung, aber du bist mutig. Plötzlich öffnet sich leise ein Fenster. Eine dunkle Gestalt schleicht herein. Sie trägt einen Umhang, grün wie Tannen. Auf ihrer Schulter sitzt ein schwarzer Rabe. Schnell greift die Gestalt nach dem Sternstein. Das Licht erlischt. Alles wird kalt und dunkel. Der Dieb ist verschwunden.",
+      "audio": "scene_1.mp3",
+      "anchor": "sternstein",
+      "then": { "type": "next", "next": "scene_2" }
+    },
+    "scene_2": {
+      "narration": "Am Morgen kommen die Weisen von Aldoria zusammen. Da ist Elara, die Elfe, mit silbernem Haar. Und da ist Borin, der Zwerg, mit einem dicken roten Bart. Die beiden mögen sich nicht besonders. Elara ruft: Ein Zwerg war das bestimmt! Borin brummt: Niemals! Das war sicher ein Elf! Da hebt der alte Magier die Hand. Alle werden still. Er sagt ruhig: Streitet nicht. Wir brauchen einen Helden, der den Sternstein zurückholt. Der Magier schaut dich an: Du hast den Dieb gesehen. Gehst du? Du nickst. Der Magier gibt dir einen kleinen Beutel. Hier ist etwas Brot und drei Goldmünzen. Pass gut auf dich auf.",
+      "audio": "scene_2.mp3",
+      "anchor": "magier",
+      "then": {
+        "type": "minigame",
+        "kind": "memory",
+        "question": "Welche Farbe hatte der Umhang des Diebes?",
+        "options": ["Grün", "Rot", "Blau"],
+        "correct": 0,
+        "xp": 1,
+        "next": "scene_3"
+      }
+    },
+    "scene_3": {
+      "narration": "Du verlässt die Halle. Vor dir liegt ein großer, dunkler Wald. Der Dieb ist hier entlanggelaufen. Aber welchen Weg hat er genommen? Du schaust dich ganz genau um. Findest du eine Spur?",
+      "audio": "scene_3.mp3",
+      "then": {
+        "type": "skillcheck",
+        "skill": "Wahrnehmung",
+        "prompt": "Würfle für Wahrnehmung – findest du die Spur?",
+        "branches": [
+          { "min": 1, "max": 9, "next": "scene_3b" },
+          { "min": 10, "max": 20, "next": "scene_3a" }
+        ]
+      }
+    },
+    "scene_3a": {
+      "narration": "Du schaust ganz genau hin. Im weichen Boden siehst du Fußspuren. Und da: eine schwarze Feder vom Raben! Die Spur führt tief in den Wald. Du folgst ihr.",
+      "audio": "scene_3a.mp3",
+      "then": { "type": "next", "next": "scene_4" }
+    },
+    "scene_3b": {
+      "narration": "Du suchst und suchst, aber du findest keine Spur. Da landet ein kleiner Waldvogel auf einem Ast. Der Vogel zwitschert: Den Dieb suchst du? Ich habe ihn gesehen! Komm, ich zeige dir den Weg. Du folgst dem kleinen Vogel in den Wald.",
+      "audio": "scene_3b.mp3",
+      "anchor": "vogel",
+      "then": { "type": "next", "next": "scene_4" }
+    },
+    "scene_4": {
+      "narrationByClass": {
+        "krieger": { "text": "Bald kommst du an einen reißenden Fluss. Eine alte Brücke führt hinüber, aber sie ist zerbrochen. Auf der anderen Seite geht die Spur weiter. Du bist stark. Du packst einen schweren Baumstamm. Mit aller Kraft legst du ihn über den Fluss. So baust du dir eine neue Brücke und gehst sicher hinüber.", "audio": "scene_4_krieger.mp3" },
+        "magier": { "text": "Bald kommst du an einen reißenden Fluss. Eine alte Brücke führt hinüber, aber sie ist zerbrochen. Auf der anderen Seite geht die Spur weiter. Du kannst zaubern. Du sprichst einen Zauber, und Eis wächst über das Wasser. Es wird zu einer glitzernden Brücke. Vorsichtig gehst du über das kalte Eis.", "audio": "scene_4_magier.mp3" },
+        "barde": { "text": "Bald kommst du an einen reißenden Fluss. Eine alte Brücke führt hinüber, aber sie ist zerbrochen. Auf der anderen Seite geht die Spur weiter. Am Ufer sitzt ein alter Fährmann. Du lächelst und erzählst ihm von deinem wichtigen Auftrag. Der Fährmann nickt und bringt dich mit seinem Boot hinüber.", "audio": "scene_4_barde.mp3" }
+      },
+      "then": { "type": "next", "next": "scene_5" }
+    },
+    "scene_5": {
+      "narration": "Der Weg führt in einen dunklen Teil des Waldes. Die Bäume sind hier alt und dicht. Es ist ganz still. Plötzlich siehst du zwei leuchtende Augen zwischen den Büschen. Traust du dich weiter?",
+      "audio": "scene_5.mp3",
+      "then": {
+        "type": "skillcheck",
+        "skill": "Mut",
+        "prompt": "Würfle für Mut – gehst du weiter?",
+        "branches": [
+          { "min": 1, "max": 9, "next": "scene_5b" },
+          { "min": 10, "max": 20, "next": "scene_5a" }
+        ]
+      }
+    },
+    "scene_5a": {
+      "narration": "Du atmest tief ein und gehst mutig weiter. Da kommt eine alte Eule aus den Büschen. Die Eule ruft freundlich: Uhu! Die leuchtenden Augen waren nur die Eule. Sie zeigt dir mit dem Flügel den Weg.",
+      "audio": "scene_5a.mp3",
+      "anchor": "eule",
+      "then": { "type": "next", "next": "scene_6" }
+    },
+    "scene_5b": {
+      "narration": "Du erschrickst und bleibst stehen. Aber dann denkst du an den Sternstein. Langsam gehst du weiter. Da fliegt eine kleine Eule auf und ruft: Uhu! Es war nur eine Eule! Du musst lachen und gehst weiter.",
+      "audio": "scene_5b.mp3",
+      "anchor": "eule",
+      "then": { "type": "next", "next": "scene_6" }
+    },
+    "scene_6": {
+      "narration": "Der Weg wird eng zwischen hohen Felsen. Plötzlich springt ein Kobold auf den Weg! Er ist klein und grün und hat krumme Zähne. Der Kobold kreischt: Niemand kommt hier vorbei! Er schwingt seinen Knüppel.",
+      "audio": "scene_6.mp3",
+      "anchor": "kobold",
+      "then": {
+        "type": "combat",
+        "enemy": { "name": "Kobold", "hp": 9, "hitTarget": 9, "damage": 2, "anchor": "kobold" },
+        "playerHitDamage": 3,
+        "talkOut": { "stat": "charisma", "target": 12, "next": "scene_6_talk" },
+        "winNext": "scene_6_win"
+      }
+    },
+    "scene_6_talk": {
+      "narration": "Du erzählst dem Kobold von deinem wichtigen Auftrag. Du versprichst ihm eine Goldmünze. Der Kobold grinst und sagt: Na gut, na gut! Er lässt dich vorbei. Dabei fällt ihm ein kleiner silberner Schlüssel aus der Tasche. Du hebst ihn auf und steckst ihn ein.",
+      "audio": "scene_6_talk.mp3",
+      "grantItem": "silberner_schluessel",
+      "then": { "type": "next", "next": "scene_7" }
+    },
+    "scene_6_win": {
+      "narration": "Der Kobold gibt auf. Schon gut, schon gut, ruft er und rennt zwischen den Felsen davon. Dabei verliert er etwas Glänzendes: einen kleinen silbernen Schlüssel. Du hebst ihn auf und steckst ihn ein. Der Weg ist frei.",
+      "audio": "scene_6_win.mp3",
+      "grantItem": "silberner_schluessel",
+      "then": { "type": "next", "next": "scene_7" }
+    },
+    "scene_7": {
+      "narration": "Es wird Abend im Wald. Du machst ein kleines Feuer und setzt dich auf einen Stein. Der Wald ist dunkel, aber das Feuer ist warm und hell. Ein kleiner Waldvogel setzt sich neben dich. Der Vogel zwitschert: Hab keine Angst. Du bist tapfer. Du schaffst das. Du isst ein Stück Brot und teilst es mit dem Vogel. Für einen Moment fühlst du dich nicht mehr allein. Morgen geht deine Reise weiter.",
+      "audio": "scene_7.mp3",
+      "anchor": "vogel",
+      "then": {
+        "type": "minigame",
+        "kind": "comprehension",
+        "question": "Was teilst du mit dem Vogel?",
+        "options": ["Brot", "Gold", "Wasser"],
+        "correct": 0,
+        "xp": 1,
+        "next": "scene_8"
+      }
+    },
+    "scene_8": {
+      "narration": "Am nächsten Tag kommst du an den Rand des Waldes. Vor dir liegt ein hohes, dunkles Gebirge. Weit oben, auf einem schmalen Pfad, siehst du eine Gestalt mit grünem Umhang. Der Dieb! Auf seiner Schulter sitzt der schwarze Rabe. Der Dieb dreht sich kurz um und verschwindet hinter den Felsen. Der Sternstein ist ganz nah. Aber der Weg in die Berge ist weit und gefährlich. Du holst tief Luft und machst dich bereit. Dein Abenteuer hat gerade erst begonnen.",
+      "audio": "scene_8.mp3",
+      "anchor": "dieb",
+      "then": {
+        "type": "minigame",
+        "kind": "comprehension",
+        "question": "Wohin ist der Dieb geflohen?",
+        "options": ["In die Berge", "Über den Fluss", "In die Stadt"],
+        "correct": 0,
+        "xp": 1,
+        "next": "scene_end"
+      }
+    },
+    "scene_end": {
+      "narration": "Du hast das Abenteuer gut gemeistert. Aber der Sternstein ist noch nicht gefunden. Wie geht es weiter? Das erfährst du in der nächsten Episode.",
+      "audio": "scene_end.mp3",
+      "then": { "type": "ending" }
+    }
+  }
+}
