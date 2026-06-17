@@ -7,12 +7,13 @@ import CreateScreen from "./src/screens/CreateScreen";
 import MenuScreen from "./src/screens/MenuScreen";
 import MapPlayScreen from "./src/screens/MapPlayScreen";
 import PlayScreen from "./src/screens/PlayScreen";
+import InventoryScreen from "./src/screens/InventoryScreen";
 import { colors } from "./src/theme";
 
 // B3: play on the overworld map; flip to false for the linear player fallback.
 const USE_MAP = true;
 
-type Screen = "menu" | "play";
+type Screen = "menu" | "play" | "inventory";
 
 function Root() {
   const { loaded, character } = useGame();
@@ -35,7 +36,8 @@ function Root() {
     const Play = USE_MAP ? MapPlayScreen : PlayScreen;
     return <Play onExit={() => setScreen("menu")} />;
   }
-  return <MenuScreen onPlay={() => setScreen("play")} />;
+  if (screen === "inventory") return <InventoryScreen onExit={() => setScreen("menu")} />;
+  return <MenuScreen onPlay={() => setScreen("play")} onInventory={() => setScreen("inventory")} />;
 }
 
 export default function App() {

@@ -114,7 +114,7 @@ const synthesizeSpeech = elevenLabsTTS;
 /* ===========================================================================
  * Image provider — OpenAI gpt-image-1. Returns a PNG Buffer.
  * ========================================================================= */
-async function openAiImage(prompt, { transparent, size = "1024x1024" }) {
+async function openAiImage(prompt, { transparent, size = "1024x1024", quality }) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is not set (add it to .env).");
 
@@ -127,6 +127,7 @@ async function openAiImage(prompt, { transparent, size = "1024x1024" }) {
         model: "gpt-image-1",
         prompt,
         size,
+        ...(quality ? { quality } : {}),
         background: transparent ? "transparent" : "auto",
       }),
     },
@@ -298,7 +299,7 @@ async function renderEpisodeImages(ep, dir) {
   }
   if (ep.mapImage) {
     if (ep.mapPrompt) {
-      await renderImage(path.join(dir, ep.mapImage), ep.mapPrompt, STYLE_MAP, { transparent: false, size: "1024x1536" }, "map");
+      await renderImage(path.join(dir, ep.mapImage), ep.mapPrompt, STYLE_MAP, { transparent: false, size: "1024x1536", quality: "high" }, "map");
     } else {
       console.warn(`    map    WARN  mapImage set but no mapPrompt — keeping existing ${ep.mapImage}`);
     }

@@ -20,7 +20,7 @@ import { useEpisodeRunner, SceneInteraction, LevelUpBanner } from "../scene";
 import { colors, radius, space } from "../theme";
 import { Btn } from "../ui";
 
-const HERO = 56;
+const HERO = 80; // character cutout (transparent full-body sprite), not a circle crop
 const NODE = 38;
 const MAP_ASPECT = 1024 / 1536; // placeholder map w/h; per-episode when real maps land
 const ZOOM = 1.6; // how much bigger than the viewport the map renders (room to pan)
@@ -42,7 +42,8 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
   const mapH = mapW / MAP_ASPECT;
 
   const nodeCenter = (n: MapNode) => ({ x: n.pos.x * mapW, y: n.pos.y * mapH });
-  const heroTopLeft = (n: MapNode) => ({ x: n.pos.x * mapW - HERO / 2, y: n.pos.y * mapH - HERO / 2 });
+  // Anchor the cutout's feet near the node (it stands on the node, not centered on it).
+  const heroTopLeft = (n: MapNode) => ({ x: n.pos.x * mapW - HERO / 2, y: n.pos.y * mapH - HERO * 0.82 });
   const cameraFor = (n: MapNode) => {
     const c = nodeCenter(n);
     return {
@@ -135,7 +136,7 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
         })}
 
         <Animated.View style={[styles.hero, { transform: heroXY.current.getTranslateTransform() }]}>
-          {avatar ? <Image source={avatar} style={styles.heroImg} resizeMode="cover" /> : null}
+          {avatar ? <Image source={avatar} style={styles.heroImg} resizeMode="contain" /> : null}
         </Animated.View>
       </Animated.View>
 
@@ -203,7 +204,8 @@ const styles = StyleSheet.create({
   nodeCurrent: { borderColor: colors.gold, borderBottomColor: colors.goldDeep, backgroundColor: colors.goldDeep },
   nodeLabel: { color: colors.text, fontSize: 16, fontWeight: "900" },
 
-  hero: { position: "absolute", top: 0, left: 0, width: HERO, height: HERO, borderRadius: HERO / 2, borderWidth: 3, borderColor: colors.gold, backgroundColor: colors.bgDeep, overflow: "hidden" },
+  // Transparent character cutout, with a soft drop shadow so it sits on the map.
+  hero: { position: "absolute", top: 0, left: 0, width: HERO, height: HERO, shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 5, shadowOffset: { width: 0, height: 3 } },
   heroImg: { width: "100%", height: "100%" },
 
   cta: { position: "absolute", left: 0, right: 0, bottom: space.xl, alignItems: "center" },

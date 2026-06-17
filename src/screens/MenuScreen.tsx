@@ -6,7 +6,6 @@ import {
   coverImage,
   FIRST_EPISODE,
   getEpisode,
-  itemDef,
   STAT_LABELS,
   StatId,
 } from "../content";
@@ -14,7 +13,7 @@ import { useGame } from "../state";
 import { colors, panel, radius, slot, space } from "../theme";
 import { Btn } from "../ui";
 
-export default function MenuScreen({ onPlay }: { onPlay: () => void }) {
+export default function MenuScreen({ onPlay, onInventory }: { onPlay: () => void; onInventory: () => void }) {
   const { character, progress, resetAll } = useGame();
   if (!character) return null;
 
@@ -50,19 +49,9 @@ export default function MenuScreen({ onPlay }: { onPlay: () => void }) {
           </View>
         </View>
 
-        {/* inventory */}
+        {/* inventory → dedicated slot-grid screen (B5) */}
         <Text style={styles.section}>Ausrüstung</Text>
-        {character.items.length === 0 ? (
-          <Text style={styles.dim}>Noch keine Gegenstände gefunden.</Text>
-        ) : (
-          <View style={styles.itemRow}>
-            {character.items.map((id) => (
-              <View key={id} style={styles.itemChip}>
-                <Text style={styles.itemText}>🗝️ {itemDef(ep, id)?.name ?? id}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+        <Btn title={`🎒 Beutel (${character.items.length})`} onPress={onInventory} />
 
         {/* episode */}
         <Text style={styles.section}>Abenteuer</Text>
@@ -96,10 +85,6 @@ const styles = StyleSheet.create({
   statLabel: { color: colors.textDim, fontSize: 12 },
   xp: { color: colors.textDim, fontSize: 13, marginTop: space.sm },
   section: { color: colors.gold, fontSize: 16, fontWeight: "900", letterSpacing: 0.5, textTransform: "uppercase", marginTop: space.lg, marginBottom: space.sm },
-  dim: { color: colors.textDim, fontSize: 15 },
-  itemRow: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-  itemChip: { ...slot, borderRadius: radius.pill, paddingVertical: 8, paddingHorizontal: 14 },
-  itemText: { color: colors.text, fontSize: 15 },
   epCard: { ...panel, overflow: "hidden" },
   cover: { width: "100%", height: 160 },
   epTitle: { color: colors.text, fontSize: 18, fontWeight: "700", padding: space.md },

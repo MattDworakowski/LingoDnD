@@ -18,7 +18,7 @@
     "dieb": { "prompt": "a hooded thief in a forest-green cloak seen from behind on a narrow mountain path, a black raven on his shoulder", "file": "dieb.png" }
   },
   "items": {
-    "silberner_schluessel": { "name": "Silberner Schlüssel", "slot": "schluessel", "prompt": "a small ornate silver key", "file": "silberner_schluessel.png" }
+    "silberner_schluessel": { "name": "Silberner Schlüssel", "slot": "schluessel", "prompt": "a small ornate silver key", "file": "silberner_schluessel.png", "desc": "Ein kleiner silberner Schlüssel, den der Kobold verloren hat. Wer weiß, welche Tür er öffnet?" }
   },
   "scenes": {
     "scene_1": {

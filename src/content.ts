@@ -31,6 +31,7 @@ export interface Scene {
   map?: MapPos; // present only on SPINE scenes → a node on the map (B3)
   then: Then;
 }
+export interface ItemDef { name: string; slot: string; file: string; desc?: string; bonus?: string }
 export interface Episode {
   id: string;
   campaign: string;
@@ -40,7 +41,7 @@ export interface Episode {
   revealImages?: "afterAudio" | "onStart";
   mapImage?: string; // the episode's overworld map (B3)
   anchors: Record<string, { prompt: string; file: string }>;
-  items: Record<string, { name: string; slot: string; file: string }>;
+  items: Record<string, ItemDef>;
   scenes: Record<string, Scene>;
 }
 export interface ClassDef { name: string; primary: StatId; blurb: string; stats: Record<StatId, number> }
