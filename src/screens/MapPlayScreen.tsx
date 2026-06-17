@@ -1,8 +1,8 @@
 // Overworld map player (B3). The episode plays out on a panning, zooming map:
 // the hero walks the SPINE node→node, the camera pulls back to frame the trip
-// then zooms in on arrival, fog-of-war recedes up the journey as you climb, a
-// dotted path connects the nodes, and each node's scene resolves in a bottom
-// tray. Branches/dice/combat live in the tray, so the hero only walks the spine.
+// then zooms in on arrival, a dotted path connects the nodes, and each scene
+// resolves in a tray. Branches/dice/combat live in the tray, so the hero only
+// walks the spine.
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -27,8 +27,6 @@ const MAP_ASPECT = 1024 / 1536; // placeholder map w/h; per-episode when real ma
 const BASE = 1.7; // map layout size vs viewport (room to pan at the most zoomed-out level)
 const Z_REST = 1.0; // zoom when resting at a node
 const Z_TRAVEL = 0.78; // pulled-back zoom while walking, to show the journey
-const FOG_MARGIN = 48; // how far past the next node the fog starts (map px)
-const FOG_COLOR = "rgba(8,6,4,0.92)";
 
 export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
   const { width, height } = useWindowDimensions();
@@ -62,13 +60,6 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
     return camForPoint(c.x, c.y, z);
   };
 
-  // Fog recedes as the hero climbs: it covers everything above the NEXT node, so
-  // you can always see one step ahead. translateY slides the cover up the map.
-  const fogTranslateFor = (index: number) => {
-    const nextY = index + 1 < nodes.length ? nodeCenter(nodes[index + 1]).y : 0;
-    return nextY - FOG_MARGIN - mapH;
-  };
-
   // Where the hero stands now. On resume into a sub-scene (no node of its own),
   // stand at the most recent spine node at/before it in scene order.
   function resumeNode(): MapNode {
@@ -89,7 +80,6 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
   const heroXY = useRef<Animated.ValueXY | null>(null);
   if (!heroXY.current) heroXY.current = new Animated.ValueXY(heroTopLeft(heroNode));
   const zoom = useRef(new Animated.Value(Z_REST)).current;
-  const fogY = useRef(new Animated.Value(fogTranslateFor(heroIndex))).current;
   const heroScale = useRef(new Animated.Value(1)).current;
   const pulse = useRef(new Animated.Value(1)).current;
 
@@ -105,8 +95,8 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
   }, [pulse]);
 
   // When the story advances to a NEW spine node, close the tray and travel there:
-  // pull back to frame both nodes, walk the hero across + recede the fog, then
-  // zoom in on arrival with a little landing bounce. Sub-scenes keep the hero put.
+  // pull back to frame both nodes, walk the hero across, then zoom in on arrival
+  // with a little landing bounce. Sub-scenes keep the hero put.
   useEffect(() => {
     const target = nodes.find((n) => n.id === runner.sceneId);
     if (!target || target.id === heroNode.id) return;
@@ -117,7 +107,6 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
     setTraveling(true);
     Animated.parallel([
       Animated.timing(heroXY.current!, { toValue: heroTopLeft(target), duration: 1150, useNativeDriver: true }),
-      Animated.timing(fogY, { toValue: fogTranslateFor(target.index), duration: 1150, useNativeDriver: true }),
       Animated.sequence([
         Animated.parallel([
           Animated.timing(zoom, { toValue: Z_TRAVEL, duration: 430, useNativeDriver: true }),
@@ -142,9 +131,9 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
 
   const atStart = heroNode.index === 0 && runner.sceneId === ep.startScene;
 
-  // Dotted trail along the spine, revealed up to the next step (fog hides beyond).
+  // Dotted trail along the whole spine; walked segments gold, upcoming cream.
   const dots: { key: string; x: number; y: number; done: boolean }[] = [];
-  for (let i = 0; i < nodes.length - 1 && i <= heroIndex; i++) {
+  for (let i = 0; i < nodes.length - 1; i++) {
     const a = nodeCenter(nodes[i]);
     const b = nodeCenter(nodes[i + 1]);
     const k = Math.max(2, Math.min(9, Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 44)));
@@ -188,14 +177,6 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
             </Pressable>
           );
         })}
-
-        {/* fog-of-war: a dark cover above the next node, feathered at its lower edge */}
-        <Animated.View style={[styles.fog, { width: mapW, height: mapH, transform: [{ translateY: fogY }] }]} pointerEvents="none">
-          <View style={{ flex: 1, backgroundColor: FOG_COLOR }} />
-          {[0.66, 0.42, 0.22, 0.08].map((o, i) => (
-            <View key={i} style={{ height: 7, backgroundColor: FOG_COLOR, opacity: o }} />
-          ))}
-        </Animated.View>
 
         <Animated.View style={[styles.hero, { transform: [...heroXY.current.getTranslateTransform(), { scale: heroScale }] }]}>
           {avatar ? <Image source={avatar} style={styles.heroImg} resizeMode="contain" /> : null}
@@ -275,8 +256,6 @@ const styles = StyleSheet.create({
   nodeDone: { backgroundColor: colors.greenDeep, borderColor: colors.green },
   nodeCurrent: { borderColor: colors.gold, borderBottomColor: colors.goldDeep, backgroundColor: colors.goldDeep },
   nodeLabel: { color: colors.text, fontSize: 16, fontWeight: "900" },
-
-  fog: { position: "absolute", top: 0, left: 0 },
 
   // Transparent character cutout, with a soft drop shadow so it sits on the map.
   hero: { position: "absolute", top: 0, left: 0, width: HERO, height: HERO, shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 5, shadowOffset: { width: 0, height: 3 } },

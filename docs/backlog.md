@@ -40,8 +40,9 @@ fold in as alternative round actions.
 ---
 
 ## B3 — Board-game overworld map (Heroes of Might & Magic III style)  ·  L · 🔄 P1+P2 done  ·  *big idea*
-**Status:** P1 (map + camera + node walk + scene tray) and P2 (zoom, fog-of-war,
-path art, transitions) are built — see [b3-map-player-plan.md](b3-map-player-plan.md).
+**Status:** P1 (map + camera + node walk + scene tray) and P2 (zoom, path art,
+transitions) are built — see [b3-map-player-plan.md](b3-map-player-plan.md).
+(Fog-of-war was tried and removed — the board reads fine without it.)
 Pending: the bespoke Ep-1 map render (blocked on OpenAI billing) + re-tuning node
 coords to it; P3 = the zoomed-out campaign grid (all episodes as regions).
 **Idea:** instead of the story playing over a near-empty screen, show a **2D

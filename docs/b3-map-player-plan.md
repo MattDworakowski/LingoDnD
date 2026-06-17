@@ -57,13 +57,14 @@ Resulting order:
 - **Zoom** — a `scale` transform on the map layer (camera math is scale-aware +
   clamped). Auto: pulls back to `Z_TRAVEL` to frame the trip while walking, zooms
   back to `Z_REST` on arrival. (No pinch gesture — would need react-native-gesture-handler.)
-- **Fog-of-war reveal** — a dark cover above the *next* node (so you see one step
-  ahead) that slides up the map as the hero climbs; feathered lower edge via
-  stacked strips. Relies on the journey being bottom→top (node `y` monotonic).
-- **Path-drawing art** — a dotted trail along the spine; travelled dots gold,
-  the next segment cream, beyond hidden by the fog.
+- **Path-drawing art** — a dotted trail along the whole spine; walked segments
+  gold, upcoming segments cream.
 - **Transitions** — the tray slides up + fades in on open; the hero does a little
   landing bounce on arrival; camera pull-back/zoom-in frames each leg.
+- **Fog-of-war — tried, then removed (by choice).** Built a receding dark band,
+  then per-node "cloud puffs that clear"; both felt awkward/heavy for the value,
+  and the board reads fine without it. Not worth re-adding without a genuinely
+  nice effect (would likely need svg/gradient for soft mist).
 
 ## P3 — later
 
