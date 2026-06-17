@@ -73,6 +73,13 @@ const STYLE_COVER =
   ", polished 2D fantasy mobile game illustration, bold clean outlines, cel " +
   "shading, vibrant saturated colours, charming storybook game scene, no text, " +
   "consistent style.";
+// Episode overworld map (B3): rich isometric board-game world, panned across as
+// the episode plays. Edge-to-edge, no border (the camera moves over a continuous
+// world). Portrait to match the bottom→top journey + the node coords.
+const STYLE_MAP =
+  ", highly detailed cartoon fantasy adventure map, slight isometric top-down " +
+  "view, bold clean outlines, vibrant colours, intricate and richly detailed, " +
+  "fills the whole frame edge to edge, no text, no labels, no border.";
 
 /* ===========================================================================
  * TTS — ElevenLabs eleven_multilingual_v2, ~10% slow for a young learner.
@@ -176,6 +183,11 @@ function validateEpisode(ep, id) {
     }
     if (scene.grantItem && !(ep.items && ep.items[scene.grantItem])) {
       errors.push(`scene "${sid}".grantItem -> "${scene.grantItem}" not in items map.`);
+    }
+    if (scene.map) {
+      const m = scene.map;
+      const ok = (v) => typeof v === "number" && v >= 0 && v <= 1;
+      if (!ok(m.x) || !ok(m.y)) errors.push(`scene "${sid}".map must have x,y as numbers in 0..1.`);
     }
 
     const t = scene.then;
@@ -283,6 +295,13 @@ async function renderEpisodeImages(ep, dir) {
     await renderImage(path.join(dir, "cover.png"), ep.coverPrompt, STYLE_COVER, { transparent: false }, "cover");
   } else {
     console.warn("    cover  WARN  no coverPrompt — skipping cover.png");
+  }
+  if (ep.mapImage) {
+    if (ep.mapPrompt) {
+      await renderImage(path.join(dir, ep.mapImage), ep.mapPrompt, STYLE_MAP, { transparent: false, size: "1024x1536" }, "map");
+    } else {
+      console.warn(`    map    WARN  mapImage set but no mapPrompt — keeping existing ${ep.mapImage}`);
+    }
   }
 }
 

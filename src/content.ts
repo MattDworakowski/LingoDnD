@@ -19,12 +19,16 @@ export type Then =
   | { type: "ending" };
 
 export interface ClassNarration { text: string; audio: string }
+// Normalized (0–1) position on the episode map. Resolution-independent so the
+// coords survive a map-art swap and the eventual campaign grid-world (B3).
+export interface MapPos { x: number; y: number }
 export interface Scene {
   narration?: string;
   audio?: string;
   narrationByClass?: Record<ClassId, ClassNarration>;
   anchor?: string;
   grantItem?: string;
+  map?: MapPos; // present only on SPINE scenes → a node on the map (B3)
   then: Then;
 }
 export interface Episode {
@@ -34,6 +38,7 @@ export interface Episode {
   title: string;
   startScene: string;
   revealImages?: "afterAudio" | "onStart";
+  mapImage?: string; // the episode's overworld map (B3)
   anchors: Record<string, { prompt: string; file: string }>;
   items: Record<string, { name: string; slot: string; file: string }>;
   scenes: Record<string, Scene>;
@@ -79,4 +84,16 @@ export function itemImage(ep: Episode, itemId: string): number | undefined {
 export function coverImage(epId: string): number | undefined { return asset(`${epId}/cover.png`); }
 export function avatarImage(cls: ClassId, gender: Gender): number | undefined {
   return asset(`characters/${cls}_${gender}.png`);
+}
+export function mapImage(ep: Episode): number | undefined {
+  return ep.mapImage ? asset(`${ep.id}/${ep.mapImage}`) : undefined;
+}
+
+// The ordered spine nodes (scenes carrying a `map` position). Relies on
+// episode.json listing scenes in spine order (insertion order is preserved).
+export interface MapNode { id: string; pos: MapPos; index: number }
+export function spineNodes(ep: Episode): MapNode[] {
+  return Object.entries(ep.scenes)
+    .filter(([, s]) => !!s.map)
+    .map(([id, s], index) => ({ id, pos: s.map!, index }));
 }

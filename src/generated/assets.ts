@@ -12,6 +12,7 @@ export const assets: Record<string, number> = {
   "episode-01/eule.png": require("./../../content/episode-01/eule.png"),
   "episode-01/kobold.png": require("./../../content/episode-01/kobold.png"),
   "episode-01/magier.png": require("./../../content/episode-01/magier.png"),
+  "episode-01/map.png": require("./../../content/episode-01/map.png"),
   "episode-01/scene_1.mp3": require("./../../content/episode-01/scene_1.mp3"),
   "episode-01/scene_2.mp3": require("./../../content/episode-01/scene_2.mp3"),
   "episode-01/scene_3.mp3": require("./../../content/episode-01/scene_3.mp3"),
