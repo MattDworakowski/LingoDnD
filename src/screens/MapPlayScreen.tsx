@@ -1,8 +1,8 @@
-// Overworld map player (B3 P1): the episode plays out on a panning map. The
-// hero walks the SPINE node→node; the camera auto-pans to the active node; each
-// node's scene (and its branch/combat sub-scenes) resolve in a modal over the
-// map. Branches/dice/combat live in the modal, so the hero only ever walks the
-// spine. Deferred to P2: zoom, fog-of-war, path-drawing art, transitions.
+// Overworld map player (B3). The episode plays out on a panning, zooming map:
+// the hero walks the SPINE node→node, the camera pulls back to frame the trip
+// then zooms in on arrival, fog-of-war recedes up the journey as you climb, a
+// dotted path connects the nodes, and each node's scene resolves in a bottom
+// tray. Branches/dice/combat live in the tray, so the hero only walks the spine.
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -22,8 +22,13 @@ import { Btn } from "../ui";
 
 const HERO = 80; // character cutout (transparent full-body sprite), not a circle crop
 const NODE = 38;
+const DOT = 9;
 const MAP_ASPECT = 1024 / 1536; // placeholder map w/h; per-episode when real maps land
-const ZOOM = 1.6; // how much bigger than the viewport the map renders (room to pan)
+const BASE = 1.7; // map layout size vs viewport (room to pan at the most zoomed-out level)
+const Z_REST = 1.0; // zoom when resting at a node
+const Z_TRAVEL = 0.78; // pulled-back zoom while walking, to show the journey
+const FOG_MARGIN = 48; // how far past the next node the fog starts (map px)
+const FOG_COLOR = "rgba(8,6,4,0.92)";
 
 export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
   const { width, height } = useWindowDimensions();
@@ -36,20 +41,32 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
   const map = mapImage(ep);
   const avatar = avatarImage(character.classId, character.gender);
 
-  // Displayed map size: larger than the viewport in both axes so any node can be
-  // centered with room to pan around it.
-  const mapW = Math.max(width, height * MAP_ASPECT) * ZOOM;
+  // Map layout size: bigger than the viewport so a node can be centered with
+  // room to pan, even at the most zoomed-out (Z_TRAVEL) level.
+  const mapW = Math.max(width, height * MAP_ASPECT) * BASE;
   const mapH = mapW / MAP_ASPECT;
 
   const nodeCenter = (n: MapNode) => ({ x: n.pos.x * mapW, y: n.pos.y * mapH });
   // Anchor the cutout's feet near the node (it stands on the node, not centered on it).
   const heroTopLeft = (n: MapNode) => ({ x: n.pos.x * mapW - HERO / 2, y: n.pos.y * mapH - HERO * 0.82 });
-  const cameraFor = (n: MapNode) => {
+
+  // Camera translate to centre a map point at zoom z (scale is about the layer
+  // centre), clamped so the scaled map always covers the viewport.
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  const camForPoint = (px: number, py: number, z: number) => ({
+    x: clamp(width / 2 - mapW / 2 - z * (px - mapW / 2), width - (mapW / 2) * (1 + z), (mapW / 2) * (z - 1)),
+    y: clamp(height / 2 - mapH / 2 - z * (py - mapH / 2), height - (mapH / 2) * (1 + z), (mapH / 2) * (z - 1)),
+  });
+  const camForNode = (n: MapNode, z: number) => {
     const c = nodeCenter(n);
-    return {
-      x: Math.min(0, Math.max(width - mapW, width / 2 - c.x)),
-      y: Math.min(0, Math.max(height - mapH, height / 2 - c.y)),
-    };
+    return camForPoint(c.x, c.y, z);
+  };
+
+  // Fog recedes as the hero climbs: it covers everything above the NEXT node, so
+  // you can always see one step ahead. translateY slides the cover up the map.
+  const fogTranslateFor = (index: number) => {
+    const nextY = index + 1 < nodes.length ? nodeCenter(nodes[index + 1]).y : 0;
+    return nextY - FOG_MARGIN - mapH;
   };
 
   // Where the hero stands now. On resume into a sub-scene (no node of its own),
@@ -68,9 +85,12 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
   const heroIndex = heroNode.index;
 
   const cam = useRef<Animated.ValueXY | null>(null);
-  if (!cam.current) cam.current = new Animated.ValueXY(cameraFor(heroNode));
+  if (!cam.current) cam.current = new Animated.ValueXY(camForNode(heroNode, Z_REST));
   const heroXY = useRef<Animated.ValueXY | null>(null);
   if (!heroXY.current) heroXY.current = new Animated.ValueXY(heroTopLeft(heroNode));
+  const zoom = useRef(new Animated.Value(Z_REST)).current;
+  const fogY = useRef(new Animated.Value(fogTranslateFor(heroIndex))).current;
+  const heroScale = useRef(new Animated.Value(1)).current;
   const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -84,31 +104,70 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
     return () => loop.stop();
   }, [pulse]);
 
-  // When the story advances to a NEW spine node, close the modal and walk there.
-  // Sub-scenes (no `map`) keep the hero put and the modal open.
+  // When the story advances to a NEW spine node, close the tray and travel there:
+  // pull back to frame both nodes, walk the hero across + recede the fog, then
+  // zoom in on arrival with a little landing bounce. Sub-scenes keep the hero put.
   useEffect(() => {
     const target = nodes.find((n) => n.id === runner.sceneId);
     if (!target || target.id === heroNode.id) return;
+    const from = nodeCenter(heroNode);
+    const to = nodeCenter(target);
+    const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
     setModalOpen(false);
     setTraveling(true);
     Animated.parallel([
-      Animated.timing(heroXY.current!, { toValue: heroTopLeft(target), duration: 950, useNativeDriver: true }),
-      Animated.timing(cam.current!, { toValue: cameraFor(target), duration: 950, useNativeDriver: true }),
+      Animated.timing(heroXY.current!, { toValue: heroTopLeft(target), duration: 1150, useNativeDriver: true }),
+      Animated.timing(fogY, { toValue: fogTranslateFor(target.index), duration: 1150, useNativeDriver: true }),
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(zoom, { toValue: Z_TRAVEL, duration: 430, useNativeDriver: true }),
+          Animated.timing(cam.current!, { toValue: camForPoint(mid.x, mid.y, Z_TRAVEL), duration: 430, useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(zoom, { toValue: Z_REST, duration: 620, useNativeDriver: true }),
+          Animated.timing(cam.current!, { toValue: camForNode(target, Z_REST), duration: 620, useNativeDriver: true }),
+        ]),
+      ]),
     ]).start(({ finished }) => {
-      if (finished) {
-        setHeroNode(target);
-        setTraveling(false);
-      }
+      if (!finished) return;
+      setHeroNode(target);
+      setTraveling(false);
+      Animated.sequence([
+        Animated.timing(heroScale, { toValue: 1.16, duration: 140, useNativeDriver: true }),
+        Animated.spring(heroScale, { toValue: 1, friction: 4, useNativeDriver: true }),
+      ]).start();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runner.sceneId]);
 
   const atStart = heroNode.index === 0 && runner.sceneId === ep.startScene;
 
+  // Dotted trail along the spine, revealed up to the next step (fog hides beyond).
+  const dots: { key: string; x: number; y: number; done: boolean }[] = [];
+  for (let i = 0; i < nodes.length - 1 && i <= heroIndex; i++) {
+    const a = nodeCenter(nodes[i]);
+    const b = nodeCenter(nodes[i + 1]);
+    const k = Math.max(2, Math.min(9, Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 44)));
+    const done = i + 1 <= heroIndex;
+    for (let j = 1; j < k; j++) {
+      const t = j / k;
+      dots.push({ key: `${i}-${j}`, x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, done });
+    }
+  }
+
   return (
     <View style={styles.root}>
-      <Animated.View style={[styles.mapLayer, { width: mapW, height: mapH, transform: cam.current.getTranslateTransform() }]}>
+      <Animated.View
+        style={[
+          styles.mapLayer,
+          { width: mapW, height: mapH, transform: [...cam.current.getTranslateTransform(), { scale: zoom }] },
+        ]}
+      >
         {map ? <Image source={map} style={{ width: mapW, height: mapH }} resizeMode="cover" /> : null}
+
+        {dots.map((d) => (
+          <View key={d.key} style={[styles.dot, d.done ? styles.dotDone : styles.dotNext, { left: d.x - DOT / 2, top: d.y - DOT / 2 }]} />
+        ))}
 
         {nodes.map((n) => {
           const c = nodeCenter(n);
@@ -122,12 +181,7 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
               style={[styles.nodeHit, { left: c.x - NODE / 2, top: c.y - NODE / 2 }]}
             >
               <Animated.View
-                style={[
-                  styles.node,
-                  done && styles.nodeDone,
-                  isCurrent && styles.nodeCurrent,
-                  isCurrent && { transform: [{ scale: pulse }] },
-                ]}
+                style={[styles.node, done && styles.nodeDone, isCurrent && styles.nodeCurrent, isCurrent && { transform: [{ scale: pulse }] }]}
               >
                 <Text style={styles.nodeLabel}>{done ? "✓" : n.index + 1}</Text>
               </Animated.View>
@@ -135,7 +189,15 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
           );
         })}
 
-        <Animated.View style={[styles.hero, { transform: heroXY.current.getTranslateTransform() }]}>
+        {/* fog-of-war: a dark cover above the next node, feathered at its lower edge */}
+        <Animated.View style={[styles.fog, { width: mapW, height: mapH, transform: [{ translateY: fogY }] }]} pointerEvents="none">
+          <View style={{ flex: 1, backgroundColor: FOG_COLOR }} />
+          {[0.66, 0.42, 0.22, 0.08].map((o, i) => (
+            <View key={i} style={{ height: 7, backgroundColor: FOG_COLOR, opacity: o }} />
+          ))}
+        </Animated.View>
+
+        <Animated.View style={[styles.hero, { transform: [...heroXY.current.getTranslateTransform(), { scale: heroScale }] }]}>
           {avatar ? <Image source={avatar} style={styles.heroImg} resizeMode="contain" /> : null}
         </Animated.View>
       </Animated.View>
@@ -164,14 +226,20 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
 }
 
 /* ---------------------------------------------------- scene tray over the map */
-// A bottom sheet that auto-sizes to its content, so plain narration leaves the
-// map visible above and only dice/combat grow it (then it scrolls, capped).
+// A bottom sheet that slides up on open and auto-sizes to its content, so plain
+// narration leaves the map visible above and only dice/combat grow it (capped).
 function SceneModal({ runner, onExit }: { runner: ReturnType<typeof useEpisodeRunner>; onExit: () => void }) {
   const [showText, setShowText] = useState(false);
   const { text, anchor, revealNow } = runner;
+  const slide = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(slide, { toValue: 1, duration: 260, useNativeDriver: true }).start();
+  }, [slide]);
+  const translateY = slide.interpolate({ inputRange: [0, 1], outputRange: [90, 0] });
+
   return (
     <View style={styles.modalWrap} pointerEvents="box-none">
-      <View style={styles.tray}>
+      <Animated.View style={[styles.tray, { opacity: slide, transform: [{ translateY }] }]}>
         <View style={styles.trayHandle} />
         <Pressable onPress={() => setShowText((v) => !v)} hitSlop={12} style={styles.trayBook}>
           <Text style={styles.topIcon}>{showText ? "📖 ✕" : "📖"}</Text>
@@ -185,7 +253,7 @@ function SceneModal({ runner, onExit }: { runner: ReturnType<typeof useEpisodeRu
           ) : null}
           <SceneInteraction runner={runner} onExit={onExit} />
         </ScrollView>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -198,11 +266,17 @@ const styles = StyleSheet.create({
   topIcon: { color: colors.text, fontSize: 18, fontWeight: "700", textShadowColor: "rgba(0,0,0,0.8)", textShadowRadius: 4 },
   title: { flex: 1, textAlign: "center", color: colors.text, fontSize: 16, fontWeight: "800", textShadowColor: "rgba(0,0,0,0.8)", textShadowRadius: 4 },
 
+  dot: { position: "absolute", width: DOT, height: DOT, borderRadius: DOT / 2, borderWidth: 1 },
+  dotDone: { backgroundColor: colors.gold, borderColor: colors.goldDeep },
+  dotNext: { backgroundColor: colors.parchment, borderColor: colors.panelDark, opacity: 0.8 },
+
   nodeHit: { position: "absolute", width: NODE, height: NODE, alignItems: "center", justifyContent: "center" },
   node: { width: NODE, height: NODE, borderRadius: NODE / 2, backgroundColor: colors.panel, borderWidth: 2, borderColor: colors.panelEdge, borderBottomWidth: 4, borderBottomColor: colors.panelDark, alignItems: "center", justifyContent: "center" },
   nodeDone: { backgroundColor: colors.greenDeep, borderColor: colors.green },
   nodeCurrent: { borderColor: colors.gold, borderBottomColor: colors.goldDeep, backgroundColor: colors.goldDeep },
   nodeLabel: { color: colors.text, fontSize: 16, fontWeight: "900" },
+
+  fog: { position: "absolute", top: 0, left: 0 },
 
   // Transparent character cutout, with a soft drop shadow so it sits on the map.
   hero: { position: "absolute", top: 0, left: 0, width: HERO, height: HERO, shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 5, shadowOffset: { width: 0, height: 3 } },

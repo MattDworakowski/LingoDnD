@@ -1,8 +1,10 @@
 # B3 — Overworld Map Player: Plan
 
-Status: **building P1**. See [backlog B3](backlog.md), [BRD](../BRD.md),
-[episode schema](episode-schema.md). This is the authoritative plan for the
-overworld-map feature; the backlog entry links here.
+Status: **P1 + P2 done**; P3 (campaign grid) later. The bespoke Ep-1 map render
+is pending (OpenAI billing hard limit) — still on the placeholder; once rendered,
+re-tune the 7 node coords to its landmarks. See [backlog B3](backlog.md),
+[BRD](../BRD.md), [episode schema](episode-schema.md). This is the authoritative
+plan for the overworld-map feature; the backlog entry links here.
 
 ## The decision (and why)
 
@@ -50,12 +52,18 @@ Resulting order:
    scene content (narration, dice, mini-games, combat) moved into a **modal**
    over the map. The existing linear `PlayScreen` stays as a fallback.
 
-## P2 — deferred (explicitly out of scope for now)
+## P2 — ✅ done (dependency-free: no svg/gradient/gesture libs)
 
-- **Zoom** (camera zoom in/out; pinch).
-- **Fog-of-war reveal** (hide unexplored areas; uncover as the hero advances).
-- **Path-drawing art** (drawn trail connecting nodes).
-- **Transitions** (animated scene→scene / region transitions).
+- **Zoom** — a `scale` transform on the map layer (camera math is scale-aware +
+  clamped). Auto: pulls back to `Z_TRAVEL` to frame the trip while walking, zooms
+  back to `Z_REST` on arrival. (No pinch gesture — would need react-native-gesture-handler.)
+- **Fog-of-war reveal** — a dark cover above the *next* node (so you see one step
+  ahead) that slides up the map as the hero climbs; feathered lower edge via
+  stacked strips. Relies on the journey being bottom→top (node `y` monotonic).
+- **Path-drawing art** — a dotted trail along the spine; travelled dots gold,
+  the next segment cream, beyond hidden by the fog.
+- **Transitions** — the tray slides up + fades in on open; the hero does a little
+  landing bounce on arrival; camera pull-back/zoom-in frames each leg.
 
 ## P3 — later
 

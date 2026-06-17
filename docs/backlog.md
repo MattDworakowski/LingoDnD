@@ -39,7 +39,11 @@ fold in as alternative round actions.
 
 ---
 
-## B3 — Board-game overworld map (Heroes of Might & Magic III style)  ·  L · later  ·  *big idea*
+## B3 — Board-game overworld map (Heroes of Might & Magic III style)  ·  L · 🔄 P1+P2 done  ·  *big idea*
+**Status:** P1 (map + camera + node walk + scene tray) and P2 (zoom, fog-of-war,
+path art, transitions) are built — see [b3-map-player-plan.md](b3-map-player-plan.md).
+Pending: the bespoke Ep-1 map render (blocked on OpenAI billing) + re-tuning node
+coords to it; P3 = the zoomed-out campaign grid (all episodes as regions).
 **Idea:** instead of the story playing over a near-empty screen, show a **2D
 overworld board** with the hero's position; as you travel the hero token **moves and
 uncovers new areas** (fog-of-war) deeper into the world. Encounters, items, and
@@ -97,7 +101,7 @@ style in `render.js`.
 
 ---
 
-## B5 — Inventory as its own screen  ·  S · next  ·  *feature*
+## B5 — Inventory as its own screen  ·  S · ✅ DONE  ·  *feature*
 Items found through the journey shown in a dedicated **slot-grid** screen (like the
 reference's item grid), reached from a menu button — not the current inline chips.
 Tap a slot → item detail (name, effect). Reuses the `slot` styling + rendered item
