@@ -1,7 +1,7 @@
 // Home shell: three tabs (Abenteuer / Beutel / Held) switched by an icon bottom
 // nav. Playing an episode is a separate full-screen mode (see App.tsx).
 import React, { useState } from "react";
-import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { avatarImage, characters, coverImage, FIRST_EPISODE, getEpisode, STAT_LABELS, StatId } from "../content";
 import { useGame } from "../state";
 import { colors, panel, radius, slot, space } from "../theme";
@@ -60,6 +60,13 @@ function CharacterTab() {
   const { character, resetAll } = useGame();
   if (!character) return null;
   const def = characters.classes[character.classId];
+  // Deliberately low-key + confirmed: a kid tapped this by accident and wiped the
+  // hero. (Will move to a Settings tab later.)
+  const confirmReset = () =>
+    Alert.alert("Neuen Helden erstellen?", "Dein aktueller Held und dein Fortschritt gehen dabei verloren.", [
+      { text: "Abbrechen", style: "cancel" },
+      { text: "Löschen", style: "destructive", onPress: resetAll },
+    ]);
   const avatar = avatarImage(character.classId, character.gender);
   const statOrder: StatId[] = ["staerke", "magie", "charisma"];
   return (
@@ -86,7 +93,9 @@ function CharacterTab() {
           </Text>
         </View>
       </View>
-      <Btn title="Neuen Helden erstellen" kind="ghost" onPress={resetAll} style={{ marginTop: space.lg }} />
+      <Pressable onPress={confirmReset} hitSlop={8} style={styles.resetLink}>
+        <Text style={styles.resetText}>Neuen Helden erstellen</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -123,4 +132,8 @@ const styles = StyleSheet.create({
   epCard: { ...panel, overflow: "hidden" },
   cover: { width: "100%", height: 180 },
   epTitle: { color: colors.text, fontSize: 18, fontWeight: "700", padding: space.md },
+
+  // subtle (parent-facing) reset link
+  resetLink: { marginTop: space.xl, alignSelf: "center", padding: space.sm },
+  resetText: { color: colors.textDim, fontSize: 13, textDecorationLine: "underline" },
 });

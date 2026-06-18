@@ -2,12 +2,12 @@
 // the overworld MapPlayScreen). Scene logic lives in the shared scene engine.
 import React, { useEffect, useState } from "react";
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useEpisodeRunner, SceneInteraction, LevelUpBanner } from "../scene";
+import { useEpisodeRunner, SceneInteraction, LevelUpBanner, ItemFoundBanner } from "../scene";
 import { colors, radius, space } from "../theme";
 
 export default function PlayScreen({ onExit }: { onExit: () => void }) {
   const runner = useEpisodeRunner();
-  const { text, anchor, revealNow, character, levelUp, setLevelUp } = runner;
+  const { ep, text, anchor, revealNow, character, levelUp, setLevelUp } = runner;
 
   const [showText, setShowText] = useState(false);
   const [shownImage, setShownImage] = useState<number | undefined>(undefined);
@@ -42,6 +42,7 @@ export default function PlayScreen({ onExit }: { onExit: () => void }) {
         <SceneInteraction runner={runner} onExit={onExit} />
       </View>
 
+      {runner.itemFound ? <ItemFoundBanner ep={ep} itemId={runner.itemFound} onClose={() => runner.setItemFound(null)} /> : null}
       {levelUp ? <LevelUpBanner level={character.level} onClose={() => setLevelUp(false)} /> : null}
     </SafeAreaView>
   );

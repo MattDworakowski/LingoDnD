@@ -16,7 +16,7 @@ import {
   View,
 } from "react-native";
 import { avatarImage, mapImage, MapNode, spineNodes } from "../content";
-import { useEpisodeRunner, SceneInteraction, LevelUpBanner } from "../scene";
+import { useEpisodeRunner, SceneInteraction, LevelUpBanner, ItemFoundBanner } from "../scene";
 import { colors, radius, space } from "../theme";
 import { Btn } from "../ui";
 
@@ -201,6 +201,7 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
 
       {modalOpen ? <SceneModal runner={runner} onExit={onExit} /> : null}
 
+      {runner.itemFound ? <ItemFoundBanner ep={ep} itemId={runner.itemFound} onClose={() => runner.setItemFound(null)} /> : null}
       {runner.levelUp ? <LevelUpBanner level={character.level} onClose={() => runner.setLevelUp(false)} /> : null}
     </View>
   );

@@ -4,12 +4,15 @@
 // PlayScreen and the overworld MapPlayScreen (B3) so they behave identically.
 import { AudioPlayer, createAudioPlayer } from "expo-audio";
 import React, { useEffect, useRef, useState } from "react";
-import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from "react-native";
+import { Image, LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from "react-native";
 import {
   anchorImage,
   characters,
+  Episode,
   FIRST_EPISODE,
   getEpisode,
+  itemDef,
+  itemImage,
   sceneAudio,
   sceneText,
   Scene,
@@ -45,6 +48,7 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
   const [audioDone, setAudioDone] = useState(false);
   const [paused, setPaused] = useState(false);
   const [levelUp, setLevelUp] = useState(false);
+  const [itemFound, setItemFound] = useState<string | null>(null);
   const playerRef = useRef<AudioPlayer | null>(null);
 
   const scene: Scene = ep.scenes[sceneId];
@@ -53,7 +57,10 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
   // it isn't active yet (e.g. while the hero is still walking toward its node).
   useEffect(() => {
     game.setProgress({ episodeId: ep.id, sceneId });
-    if (scene.grantItem) game.grantItem(scene.grantItem);
+    if (scene.grantItem && !character.items.includes(scene.grantItem)) {
+      game.grantItem(scene.grantItem);
+      setItemFound(scene.grantItem); // → "Gefunden!" banner
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sceneId]);
 
@@ -69,18 +76,25 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
       return;
     }
     let sub: { remove: () => void } | null = null;
-    try {
-      const player = createAudioPlayer(src);
-      playerRef.current = player;
-      sub = player.addListener("playbackStatusUpdate", (status) => {
-        if (status.didJustFinish) setAudioDone(true);
-      });
-      player.play();
-    } catch {
-      setAudioDone(true);
-    }
+    // Defer the start one tick: when advancing to a scene at a NEW map node, the
+    // map player closes the tray (active→false) on the very next render to walk
+    // there. Deferring lets that cancel the start, so the narration doesn't blip
+    // here and then replay on arrival.
+    const startTimer = setTimeout(() => {
+      try {
+        const player = createAudioPlayer(src);
+        playerRef.current = player;
+        sub = player.addListener("playbackStatusUpdate", (status) => {
+          if (status.didJustFinish) setAudioDone(true);
+        });
+        player.play();
+      } catch {
+        setAudioDone(true);
+      }
+    }, 80);
 
     return () => {
+      clearTimeout(startTimer);
       if (sub) sub.remove();
       release();
     };
@@ -142,6 +156,8 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
     onMinigameDone,
     levelUp,
     setLevelUp,
+    itemFound,
+    setItemFound,
   };
 }
 export type EpisodeRunner = ReturnType<typeof useEpisodeRunner>;
@@ -285,8 +301,9 @@ function MiniGameView({ then, onDone }: { then: MiniThen; onDone: (correct: bool
 }
 
 /* ----------------------------------------------------------------- combat */
-// Per-round dice ritual: roll → show the maths → animate HP → monster hits back
-// on a miss → repeat until it's down. No Game Over (rescue at 0 HP). Specials:
+// Per-round dice ritual: roll → show the maths → animate enemy HP → the enemy
+// strikes back if it's still standing (so you trade blows and actually take
+// damage) → repeat until it's down. No Game Over (rescue at 0 HP). Specials:
 // Magier Feuerball (instant), Barde Reden (its own roll to skip the fight).
 function CombatView({ then, character, onResolve }: { then: CombatThen; character: Character; onResolve: (id: string) => void }) {
   const primary = characters.classes[character.classId].primary;
@@ -322,30 +339,42 @@ function CombatView({ then, character, onResolve }: { then: CombatThen; characte
     }
   }
 
-  function doAttack(roll: number) {
+  // Resolve a round: deal `dealt` to the enemy, then — if it survives — let it
+  // strike back for enemy.damage, so the player actually trades blows.
+  function resolveRound(dealt: number, openLine: string, animateDealt = true) {
     setPhase("resolving");
+    const eHp = Math.max(0, enemyHp - dealt);
+    const enemyDown = eHp <= 0;
+    const pHp = enemyDown ? playerHp : Math.max(0, playerHp - enemy.damage);
+
+    setMsg(openLine);
+    if (animateDealt) setTimeout(() => animateEnemyHp(eHp), 400);
+    else animateEnemyHp(eHp);
+
+    if (enemyDown) {
+      setTimeout(() => settle(eHp, pHp), 1500);
+      return;
+    }
+    setTimeout(() => {
+      setMsg(`Der ${enemy.name} schlägt zurück: −${enemy.damage} HP!`);
+      animatePlayerHp(pHp);
+    }, 1300);
+    setTimeout(() => settle(eHp, pHp), 2400);
+  }
+
+  function doAttack(roll: number) {
     const total = roll + bonus;
     if (total >= enemy.hitTarget) {
-      const hp = Math.max(0, enemyHp - then.playerHitDamage);
-      setMsg(`🎲 ${roll} + ${bonus} = ${total}  ≥ ${enemy.hitTarget}  →  Treffer! Der ${enemy.name} verliert ${then.playerHitDamage} HP.`);
-      setTimeout(() => animateEnemyHp(hp), 450);
-      setTimeout(() => settle(hp, playerHp), 1600);
+      resolveRound(then.playerHitDamage, `🎲 ${roll} + ${bonus} = ${total}  ≥ ${enemy.hitTarget}  →  Treffer! Der ${enemy.name} verliert ${then.playerHitDamage} HP.`);
     } else {
-      const hp = Math.max(0, playerHp - enemy.damage);
-      setMsg(`🎲 ${roll} + ${bonus} = ${total}  < ${enemy.hitTarget}  →  daneben! Der ${enemy.name} trifft dich: −${enemy.damage} HP.`);
-      setTimeout(() => animatePlayerHp(hp), 450);
-      setTimeout(() => settle(enemyHp, hp), 1600);
+      resolveRound(0, `🎲 ${roll} + ${bonus} = ${total}  < ${enemy.hitTarget}  →  daneben!`);
     }
   }
 
   function fireball() {
     if (phase !== "action" || magicUsed) return;
     setMagicUsed(true);
-    setPhase("resolving");
-    const hp = Math.max(0, enemyHp - 5);
-    setMsg(`🔥 Feuerball! Der ${enemy.name} verliert 5 HP.`);
-    setTimeout(() => animateEnemyHp(hp), 450);
-    setTimeout(() => settle(hp, playerHp), 1600);
+    resolveRound(5, `🔥 Feuerball! Der ${enemy.name} verliert 5 HP.`);
   }
 
   function doTalk(roll: number) {
@@ -432,6 +461,22 @@ export function LevelUpBanner({ level, onClose }: { level: number; onClose: () =
   );
 }
 
+// Celebratory popup when an item is picked up (see grantItem in the runner).
+export function ItemFoundBanner({ ep, itemId, onClose }: { ep: Episode; itemId: string; onClose: () => void }) {
+  const def = itemDef(ep, itemId);
+  const img = itemImage(ep, itemId);
+  return (
+    <Pressable style={styles.overlay} onPress={onClose}>
+      <View style={styles.levelCard}>
+        <Text style={styles.foundLabel}>✨ Gefunden!</Text>
+        <View style={styles.foundImgBox}>{img ? <Image source={img} style={styles.foundImg} resizeMode="contain" /> : null}</View>
+        <Text style={styles.endTitle}>{def?.name ?? itemId}</Text>
+        <Text style={styles.levelTap}>(zum Schließen tippen)</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   center: { alignItems: "center", width: "100%" },
   playingRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.md },
@@ -458,4 +503,7 @@ const styles = StyleSheet.create({
   levelCard: { backgroundColor: colors.bgPanel, borderRadius: radius.lg, padding: space.xl, alignItems: "center", borderWidth: 3, borderColor: colors.accent },
   levelText: { color: colors.text, fontSize: 18, marginTop: space.sm, textAlign: "center" },
   levelTap: { color: colors.textDim, fontSize: 13, marginTop: space.md },
+  foundLabel: { color: colors.gold, fontSize: 18, fontWeight: "900", letterSpacing: 0.5, textTransform: "uppercase" },
+  foundImgBox: { ...slot, backgroundColor: colors.bgDeep, width: 130, height: 130, borderRadius: radius.md, alignItems: "center", justifyContent: "center", padding: space.sm, marginTop: space.md },
+  foundImg: { width: "100%", height: "100%" },
 });
