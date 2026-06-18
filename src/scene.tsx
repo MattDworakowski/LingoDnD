@@ -17,7 +17,7 @@ import {
 } from "./content";
 import { Character, useGame } from "./state";
 import { colors, radius, slot, space } from "./theme";
-import { Btn } from "./ui";
+import { Btn, IconButton } from "./ui";
 
 const rollD20 = () => Math.floor(Math.random() * 20) + 1;
 
@@ -135,12 +135,8 @@ export function SceneInteraction({ runner, onExit }: { runner: EpisodeRunner; on
     return (
       <View style={styles.playingRow}>
         <ActivityIndicator color={colors.accent} />
-        <Pressable onPress={runner.replay} style={styles.smallBtn}>
-          <Text style={styles.smallBtnText}>🔁 Nochmal</Text>
-        </Pressable>
-        <Pressable onPress={() => runner.setAudioDone(true)} style={styles.smallBtn}>
-          <Text style={styles.smallBtnText}>überspringen ›</Text>
-        </Pressable>
+        <IconButton icon="🔁" onPress={runner.replay} accessibilityLabel="Nochmal anhören" />
+        <IconButton icon="⏭️" onPress={() => runner.setAudioDone(true)} accessibilityLabel="Überspringen" />
       </View>
     );
   }
@@ -159,11 +155,9 @@ function SceneActions(props: {
   switch (then.type) {
     case "next":
       return (
-        <View style={styles.center}>
-          <Pressable onPress={props.replay} style={styles.smallBtn}>
-            <Text style={styles.smallBtnText}>🔁 Nochmal hören</Text>
-          </Pressable>
-          <Btn title="Weiter" onPress={() => props.onGo(then.next)} style={{ marginTop: space.sm }} />
+        <View style={styles.iconRow}>
+          <IconButton icon="🔁" onPress={props.replay} accessibilityLabel="Nochmal hören" />
+          <IconButton icon="▶️" kind="gold" size={74} onPress={() => props.onGo(then.next)} accessibilityLabel="Weiter" />
         </View>
       );
     case "skillcheck":
@@ -357,7 +351,7 @@ function CombatView({ then, character, onResolve }: { then: CombatThen; characte
       <Text style={styles.combatMsg}>{msg}</Text>
 
       {phase === "over" ? (
-        <Btn title="Weiter" onPress={() => onResolve(then.winNext)} style={{ marginTop: space.sm }} />
+        <IconButton icon="▶️" kind="gold" size={74} onPress={() => onResolve(then.winNext)} accessibilityLabel="Weiter" style={{ marginTop: space.sm }} />
       ) : null}
 
       {phase === "action" ? (
@@ -423,6 +417,7 @@ export function LevelUpBanner({ level, onClose }: { level: number; onClose: () =
 const styles = StyleSheet.create({
   center: { alignItems: "center", width: "100%" },
   playingRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.md },
+  iconRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.lg },
   smallBtn: { ...slot, borderRadius: radius.pill, paddingVertical: 10, paddingHorizontal: 18 },
   smallBtnText: { color: colors.text, fontSize: 16, fontWeight: "700" },
   prompt: { color: colors.text, fontSize: 22, fontWeight: "800", textAlign: "center" },

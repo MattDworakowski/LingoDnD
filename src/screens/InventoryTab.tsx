@@ -1,7 +1,7 @@
-// B5: items found on the journey shown as a dedicated slot-grid (not the inline
-// chips on the menu). Tap a filled slot → item detail. Empty slots are shown.
+// B5: items found on the journey as a slot-grid (the "Beutel" home tab). Tap a
+// filled slot → item detail. Empty slots are shown.
 import React, { useState } from "react";
-import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { FIRST_EPISODE, getEpisode, itemDef, itemImage } from "../content";
 import { useGame } from "../state";
 import { colors, panel, radius, slot as slotStyle, space } from "../theme";
@@ -10,7 +10,7 @@ import { Btn } from "../ui";
 const MIN_SLOTS = 12;
 const COLS = 4;
 
-export default function InventoryScreen({ onExit }: { onExit: () => void }) {
+export default function InventoryTab() {
   const { character, progress } = useGame();
   const { width } = useWindowDimensions();
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -24,27 +24,15 @@ export default function InventoryScreen({ onExit }: { onExit: () => void }) {
   const detail = detailId ? itemDef(ep, detailId) : undefined;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.topBar}>
-        <Pressable onPress={onExit} hitSlop={12}>
-          <Text style={styles.topIcon}>‹ Menü</Text>
-        </Pressable>
-        <Text style={styles.title}>Beutel</Text>
-        <View style={{ width: 60 }} />
-      </View>
-
+    <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.scroll}>
+        <Text style={styles.h1}>Beutel</Text>
         <View style={styles.grid}>
           {Array.from({ length: slotCount }, (_, i) => {
             const id = owned[i];
             const img = id ? itemImage(ep, id) : undefined;
             return (
-              <Pressable
-                key={i}
-                disabled={!id}
-                onPress={() => id && setDetailId(id)}
-                style={[styles.slot, { width: size, height: size }]}
-              >
+              <Pressable key={i} disabled={!id} onPress={() => id && setDetailId(id)} style={[styles.slot, { width: size, height: size }]}>
                 {img ? <Image source={img} style={styles.slotImg} resizeMode="contain" /> : null}
               </Pressable>
             );
@@ -66,16 +54,13 @@ export default function InventoryScreen({ onExit }: { onExit: () => void }) {
           </View>
         </Pressable>
       ) : null}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: space.md, paddingVertical: space.sm },
-  topIcon: { color: colors.text, fontSize: 18, fontWeight: "700" },
-  title: { color: colors.gold, fontSize: 20, fontWeight: "900", letterSpacing: 0.5, textTransform: "uppercase" },
   scroll: { padding: space.lg },
+  h1: { color: colors.gold, fontSize: 22, fontWeight: "900", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: space.md },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   slot: { ...slotStyle, backgroundColor: colors.slotInset, alignItems: "center", justifyContent: "center", padding: 6 },
   slotImg: { width: "100%", height: "100%" },

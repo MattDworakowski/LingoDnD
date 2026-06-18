@@ -46,6 +46,56 @@ export function Btn({
   );
 }
 
+// Round chunky icon-only button (emoji glyph) — for pre-readers. Same bevel/sink
+// feel as Btn. `accessibilityLabel` keeps it usable for screen readers.
+export function IconButton({
+  icon,
+  onPress,
+  kind = "wood",
+  size = 60,
+  disabled = false,
+  accessibilityLabel,
+  style,
+}: {
+  icon: string;
+  onPress: () => void;
+  kind?: "wood" | "gold";
+  size?: number;
+  disabled?: boolean;
+  accessibilityLabel?: string;
+  style?: ViewStyle;
+}) {
+  const gold = kind === "gold";
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => [
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: gold ? colors.gold : colors.slot,
+          borderWidth: 2,
+          borderColor: gold ? colors.goldDeep : colors.slotInset,
+          borderTopColor: gold ? colors.gold : colors.panelEdge,
+          borderBottomWidth: 5,
+          borderBottomColor: gold ? colors.goldDeep : colors.panelDark,
+        },
+        disabled && { opacity: 0.4 },
+        pressed && !disabled && { transform: [{ translateY: 3 }], borderBottomWidth: 2 },
+        style,
+      ]}
+    >
+      <Text style={{ fontSize: size * 0.44 }}>{icon}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   btn: {
     paddingVertical: 14,
