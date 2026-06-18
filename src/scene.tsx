@@ -5,6 +5,7 @@
 import { AudioPlayer, createAudioPlayer } from "expo-audio";
 import React, { useEffect, useRef, useState } from "react";
 import { Image, LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from "react-native";
+import { BlurView } from "expo-blur";
 import {
   anchorImage,
   characters,
@@ -19,7 +20,8 @@ import {
   Then,
 } from "./content";
 import { Character, useGame } from "./state";
-import { colors, radius, slot, space } from "./theme";
+import { Equalizer, GemD20, Glow, IconPause, IconPlay, IconReplay, IconSkip, Overline, StarPip } from "./nightshade";
+import { colors, font, glassShadow, radius, space } from "./theme";
 import { Btn, IconButton } from "./ui";
 
 const rollD20 = () => Math.floor(Math.random() * 20) + 1;
@@ -27,8 +29,9 @@ const rollD20 = () => Math.floor(Math.random() * 20) + 1;
 type CombatThen = Extract<Then, { type: "combat" }>;
 type MiniThen = Extract<Then, { type: "minigame" }>;
 type SkillThen = Extract<Then, { type: "skillcheck" }>;
+const DOT_COLORS = [colors.dotTeal, colors.dotPink, colors.dotBlue, colors.gold];
 
-// LayoutAnimation needs an opt-in on Android for the HP-bar tweens.
+// LayoutAnimation needs an opt-in on Android for the HP tweens.
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -163,14 +166,26 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
 export type EpisodeRunner = ReturnType<typeof useEpisodeRunner>;
 
 /* ------------------------------------------------------- scene interaction */
-// While audio plays: a replay/skip row. After: the scene's `then` action.
+// While audio plays: a frosted audio dock (equalizer + pause/replay/skip). After: the scene's `then` action.
 export function SceneInteraction({ runner, onExit }: { runner: EpisodeRunner; onExit: () => void }) {
   if (!runner.audioDone) {
     return (
-      <View style={styles.playingRow}>
-        <IconButton icon={runner.paused ? "▶️" : "⏸️"} onPress={runner.togglePause} accessibilityLabel={runner.paused ? "Weiter abspielen" : "Pause"} />
-        <IconButton icon="🔁" onPress={runner.replay} accessibilityLabel="Nochmal anhören" />
-        <IconButton icon="⏭️" onPress={() => runner.setAudioDone(true)} accessibilityLabel="Überspringen" />
+      <View style={styles.audioDock}>
+        <View style={styles.dockNow}>
+          <Equalizer />
+          <Text style={styles.dockLabel}>wird vorgelesen…</Text>
+        </View>
+        <View style={styles.playingRow}>
+          <IconButton kind="wood" size={56} onPress={runner.togglePause} accessibilityLabel={runner.paused ? "Weiter abspielen" : "Pause"}>
+            {runner.paused ? <IconPlay size={24} color={colors.text} /> : <IconPause size={24} color={colors.text} />}
+          </IconButton>
+          <IconButton kind="wood" size={56} onPress={runner.replay} accessibilityLabel="Nochmal anhören">
+            <IconReplay size={24} color={colors.text} />
+          </IconButton>
+          <IconButton kind="gold" size={56} onPress={() => runner.setAudioDone(true)} accessibilityLabel="Überspringen">
+            <IconSkip size={24} color={colors.inkOnGold} />
+          </IconButton>
+        </View>
       </View>
     );
   }
@@ -190,8 +205,12 @@ function SceneActions(props: {
     case "next":
       return (
         <View style={styles.iconRow}>
-          <IconButton icon="🔁" onPress={props.replay} accessibilityLabel="Nochmal hören" />
-          <IconButton icon="▶️" kind="gold" size={74} onPress={() => props.onGo(then.next)} accessibilityLabel="Weiter" />
+          <IconButton kind="wood" onPress={props.replay} accessibilityLabel="Nochmal hören">
+            <IconReplay size={26} color={colors.text} />
+          </IconButton>
+          <IconButton kind="gold" size={74} onPress={() => props.onGo(then.next)} accessibilityLabel="Weiter">
+            <IconPlay size={34} />
+          </IconButton>
         </View>
       );
     case "skillcheck":
@@ -243,7 +262,7 @@ function DiceRoller({ onRoll }: { onRoll: (n: number) => void }) {
 
   return (
     <View style={styles.center}>
-      {shown !== null ? <Text style={styles.bigRoll}>{shown}</Text> : null}
+      <GemD20 size={92} value={shown} />
       <View style={styles.diceGrid}>
         {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
           <Pressable key={n} disabled={rolling || shown !== null} onPress={() => resolve(n)} style={styles.dieBtn}>
@@ -251,9 +270,7 @@ function DiceRoller({ onRoll }: { onRoll: (n: number) => void }) {
           </Pressable>
         ))}
       </View>
-      <Pressable onPress={digital} disabled={rolling || shown !== null} style={styles.smallBtn}>
-        <Text style={styles.smallBtnText}>🎲 Digital würfeln</Text>
-      </Pressable>
+      <Btn title="✦ Sterne würfeln" kind="primary" onPress={digital} disabled={rolling || shown !== null} style={{ marginTop: space.sm }} />
     </View>
   );
 }
@@ -261,7 +278,7 @@ function DiceRoller({ onRoll }: { onRoll: (n: number) => void }) {
 function DiceView({ then, onRoll }: { then: SkillThen; onRoll: (n: number) => void }) {
   return (
     <View style={styles.center}>
-      <Text style={styles.prompt}>🎲 {then.prompt}</Text>
+      <Text style={styles.prompt}>{then.prompt}</Text>
       <Text style={styles.hint}>Würfle hoch – hohe Zahlen sind gut!</Text>
       <DiceRoller onRoll={onRoll} />
     </View>
@@ -278,24 +295,31 @@ function MiniGameView({ then, onDone }: { then: MiniThen; onDone: (correct: bool
   }
   return (
     <View style={styles.center}>
+      <Overline style={{ marginBottom: 4 }}>✦ Sternenfrage</Overline>
       <Text style={styles.prompt}>{then.question}</Text>
-      <View style={{ width: "100%", gap: space.sm, marginTop: space.sm }}>
+      <View style={{ width: "100%", gap: space.sm, marginTop: space.md }}>
         {then.options.map((opt, i) => {
           const isAnswer = i === then.correct;
           const reveal = picked !== null;
-          const bg = reveal && isAnswer ? colors.success : reveal && i === picked ? colors.fail : colors.bgPanel;
+          const correct = reveal && isAnswer;
+          const wrong = reveal && i === picked && !isAnswer;
           return (
-            <Pressable key={i} onPress={() => pick(i)} style={[styles.optBtn, { backgroundColor: bg }]}>
+            <Pressable
+              key={i}
+              onPress={() => pick(i)}
+              style={[styles.optBtn, correct && styles.optCorrect, wrong && styles.optWrong]}
+            >
+              <View style={[styles.optDot, { backgroundColor: DOT_COLORS[i % DOT_COLORS.length] }]} />
               <Text style={styles.optText}>{opt}</Text>
             </Pressable>
           );
         })}
       </View>
       {picked !== null ? (
-        <Text style={styles.feedback}>
-          {picked === then.correct ? "Richtig! +1 EP ⭐" : "Schau beim nächsten Mal genau hin."}
-        </Text>
-      ) : null}
+        <Text style={styles.feedback}>{picked === then.correct ? "Richtig! +1 EP ✦" : "Schau beim nächsten Mal genau hin."}</Text>
+      ) : (
+        <Text style={styles.hint}>Tippe die richtige Antwort an</Text>
+      )}
     </View>
   );
 }
@@ -365,9 +389,9 @@ function CombatView({ then, character, onResolve }: { then: CombatThen; characte
   function doAttack(roll: number) {
     const total = roll + bonus;
     if (total >= enemy.hitTarget) {
-      resolveRound(then.playerHitDamage, `🎲 ${roll} + ${bonus} = ${total}  ≥ ${enemy.hitTarget}  →  Treffer! Der ${enemy.name} verliert ${then.playerHitDamage} HP.`);
+      resolveRound(then.playerHitDamage, `${roll} + ${bonus} = ${total} ≥ ${enemy.hitTarget} → Treffer! Der ${enemy.name} verliert ${then.playerHitDamage} HP.`);
     } else {
-      resolveRound(0, `🎲 ${roll} + ${bonus} = ${total}  < ${enemy.hitTarget}  →  daneben!`);
+      resolveRound(0, `${roll} + ${bonus} = ${total} < ${enemy.hitTarget} → daneben!`);
     }
   }
 
@@ -382,30 +406,32 @@ function CombatView({ then, character, onResolve }: { then: CombatThen; characte
     setPhase("resolving");
     const total = roll + character.stats.charisma;
     if (total >= then.talkOut.target) {
-      setMsg(`🎲 ${roll} + ${character.stats.charisma} = ${total}  ≥ ${then.talkOut.target}  →  Du redest dich geschickt vorbei!`);
+      setMsg(`${roll} + ${character.stats.charisma} = ${total} ≥ ${then.talkOut.target} → Du redest dich geschickt vorbei!`);
       setTimeout(() => onResolve(then.talkOut!.next), 1500);
     } else {
       setTalkUsed(true);
-      setMsg(`🎲 ${roll} + ${character.stats.charisma} = ${total}  →  der ${enemy.name} lacht nur. Jetzt hilft nur Kämpfen!`);
+      setMsg(`${roll} + ${character.stats.charisma} = ${total} → der ${enemy.name} lacht nur. Jetzt hilft nur Kämpfen!`);
       setTimeout(() => setPhase("action"), 1500);
     }
   }
 
   return (
     <View style={styles.center}>
-      <HpBar label={enemy.name} hp={enemyHp} max={enemy.hp} color={colors.berry} />
-      <HpBar label="Du" hp={playerHp} max={character.maxHp} color={colors.leaf} />
+      <HpPips label={enemy.name} hp={enemyHp} max={enemy.hp} color={colors.pink} />
+      <HpPips label="Du" hp={playerHp} max={character.maxHp} color={colors.teal} />
       <Text style={styles.combatMsg}>{msg}</Text>
 
       {phase === "over" ? (
-        <IconButton icon="▶️" kind="gold" size={74} onPress={() => onResolve(then.winNext)} accessibilityLabel="Weiter" style={{ marginTop: space.sm }} />
+        <IconButton kind="gold" size={74} onPress={() => onResolve(then.winNext)} accessibilityLabel="Weiter" style={{ marginTop: space.sm }}>
+          <IconPlay size={34} />
+        </IconButton>
       ) : null}
 
       {phase === "action" ? (
         <>
           {canMagic || canTalk ? (
             <View style={styles.specialRow}>
-              {canMagic ? <Btn title="🔥 Feuerball" kind="ghost" onPress={fireball} /> : null}
+              {canMagic ? <Btn title="🔥 Feuerball" kind="danger" onPress={fireball} /> : null}
               {canTalk ? <Btn title="💬 Reden" kind="ghost" onPress={() => setPhase("talk")} /> : null}
             </View>
           ) : null}
@@ -424,15 +450,19 @@ function CombatView({ then, character, onResolve }: { then: CombatThen; characte
   );
 }
 
-function HpBar({ label, hp, max, color }: { label: string; hp: number; max: number; color: string }) {
+// HP shown as a row of star pips: filled = remaining, faint outline = lost.
+function HpPips({ label, hp, max, color }: { label: string; hp: number; max: number; color: string }) {
   return (
-    <View style={{ width: "100%", marginBottom: space.sm }}>
-      <Text style={styles.hpText}>
-        {label}: {hp}/{max}
-      </Text>
-      <View style={styles.hpTrack}>
-        <View style={[styles.hpFill, { width: `${(hp / max) * 100}%`, backgroundColor: color }]} />
+    <View style={styles.hpRow}>
+      <Text style={styles.hpLabel}>{label}</Text>
+      <View style={styles.pips}>
+        {Array.from({ length: max }, (_, i) => (
+          <StarPip key={i} size={16} color={color} filled={i < hp} />
+        ))}
       </View>
+      <Text style={[styles.hpCount, { color }]}>
+        {hp}/{max}
+      </Text>
     </View>
   );
 }
@@ -443,7 +473,17 @@ function EndingView({ onExit }: { onExit: () => void }) {
     <View style={styles.center}>
       <Text style={styles.star}>⭐</Text>
       <Text style={styles.endTitle}>Fortsetzung folgt!</Text>
-      <Btn title="Zur Übersicht" onPress={onExit} style={{ marginTop: space.md }} />
+      <Btn title="Zur Reise" kind="gold" onPress={onExit} style={{ marginTop: space.md }} />
+    </View>
+  );
+}
+
+function BannerCard({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.bannerCard}>
+      <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassFillStrong }]} />
+      {children}
     </View>
   );
 }
@@ -451,12 +491,13 @@ function EndingView({ onExit }: { onExit: () => void }) {
 export function LevelUpBanner({ level, onClose }: { level: number; onClose: () => void }) {
   return (
     <Pressable style={styles.overlay} onPress={onClose}>
-      <View style={styles.levelCard}>
+      <Glow size={320} color={colors.gold} opacity={0.5} style={{ position: "absolute" }} />
+      <BannerCard>
         <Text style={styles.star}>✨</Text>
         <Text style={styles.endTitle}>Stufe {level}!</Text>
         <Text style={styles.levelText}>Deine Hauptkraft ist gewachsen.</Text>
         <Text style={styles.levelTap}>(zum Schließen tippen)</Text>
-      </View>
+      </BannerCard>
     </Pressable>
   );
 }
@@ -467,43 +508,62 @@ export function ItemFoundBanner({ ep, itemId, onClose }: { ep: Episode; itemId: 
   const img = itemImage(ep, itemId);
   return (
     <Pressable style={styles.overlay} onPress={onClose}>
-      <View style={styles.levelCard}>
-        <Text style={styles.foundLabel}>✨ Gefunden!</Text>
-        <View style={styles.foundImgBox}>{img ? <Image source={img} style={styles.foundImg} resizeMode="contain" /> : null}</View>
+      <Glow size={320} color={colors.gold} opacity={0.5} style={{ position: "absolute" }} />
+      <BannerCard>
+        <Text style={styles.foundLabel}>✦ Gefunden!</Text>
+        <View style={styles.foundImgBox}>
+          <Glow size={150} color={colors.gold} opacity={0.4} style={{ position: "absolute" }} />
+          {img ? <Image source={img} style={styles.foundImg} resizeMode="contain" /> : null}
+        </View>
         <Text style={styles.endTitle}>{def?.name ?? itemId}</Text>
         <Text style={styles.levelTap}>(zum Schließen tippen)</Text>
-      </View>
+      </BannerCard>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", width: "100%" },
+
+  // audio dock
+  audioDock: { width: "100%", alignItems: "center", gap: space.md },
+  dockNow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  dockLabel: { color: colors.textDim, fontSize: 14, fontFamily: font.body, fontStyle: "italic" },
   playingRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.md },
   iconRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.lg },
-  smallBtn: { ...slot, borderRadius: radius.pill, paddingVertical: 10, paddingHorizontal: 18 },
-  smallBtnText: { color: colors.text, fontSize: 16, fontWeight: "700" },
-  prompt: { color: colors.text, fontSize: 22, fontWeight: "800", textAlign: "center" },
-  hint: { color: colors.textDim, fontSize: 14, marginTop: 4, marginBottom: space.sm },
-  bigRoll: { color: colors.accent, fontSize: 56, fontWeight: "900" },
-  diceGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 6, marginVertical: space.sm, maxWidth: 360 },
-  dieBtn: { ...slot, width: 58, height: 48, alignItems: "center", justifyContent: "center" },
-  dieText: { color: colors.text, fontSize: 20, fontWeight: "800" },
-  optBtn: { paddingVertical: 16, paddingHorizontal: 20, borderRadius: radius.md, width: "100%", borderWidth: 2, borderColor: colors.panelDark, borderBottomWidth: 4 },
-  optText: { color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center" },
-  feedback: { color: colors.text, fontSize: 18, marginTop: space.md, textAlign: "center" },
-  combatMsg: { color: colors.text, fontSize: 18, textAlign: "center", marginVertical: space.sm, minHeight: 56 },
+
+  prompt: { color: colors.textBright, fontSize: 22, fontFamily: font.displayBold, textAlign: "center" },
+  hint: { color: colors.textDim, fontSize: 14, fontFamily: font.body, marginTop: 4, marginBottom: space.sm },
+
+  // dice
+  diceGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginVertical: space.sm, maxWidth: 300 },
+  dieBtn: { width: 62, height: 48, borderRadius: radius.md, alignItems: "center", justifyContent: "center", backgroundColor: colors.glassFill, borderWidth: 1, borderColor: colors.glassBorder },
+  dieText: { color: colors.text, fontSize: 20, fontFamily: font.displayBold },
+
+  // minigame
+  optBtn: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 16, paddingHorizontal: 18, borderRadius: radius.md, width: "100%", backgroundColor: colors.glassFill, borderWidth: 1, borderColor: colors.glassBorder },
+  optCorrect: { backgroundColor: "rgba(111,227,196,0.22)", borderColor: colors.teal },
+  optWrong: { backgroundColor: "rgba(255,138,166,0.22)", borderColor: colors.pink },
+  optDot: { width: 22, height: 22, borderRadius: 11 },
+  optText: { color: colors.text, fontSize: 18, fontFamily: font.bodyBold, flex: 1 },
+  feedback: { color: colors.text, fontSize: 18, fontFamily: font.bodyBold, marginTop: space.md, textAlign: "center" },
+
+  // combat
+  combatMsg: { color: colors.text, fontSize: 16, fontFamily: font.body, textAlign: "center", marginVertical: space.sm, minHeight: 54, lineHeight: 23 },
   specialRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: space.sm, marginBottom: space.sm },
-  hpText: { color: colors.text, fontSize: 15, fontWeight: "700", marginBottom: 4 },
-  hpTrack: { height: 16, backgroundColor: "#1f1736", borderRadius: radius.pill, overflow: "hidden" },
-  hpFill: { height: "100%", borderRadius: radius.pill },
+  hpRow: { flexDirection: "row", alignItems: "center", width: "100%", marginBottom: space.sm, gap: space.sm },
+  hpLabel: { color: colors.text, fontSize: 14, fontFamily: font.bodyBold, width: 64 },
+  pips: { flexDirection: "row", flexWrap: "wrap", flex: 1, gap: 2 },
+  hpCount: { fontSize: 13, fontFamily: font.bodyBold, width: 40, textAlign: "right" },
+
+  // banners
   star: { fontSize: 64 },
-  endTitle: { color: colors.text, fontSize: 28, fontWeight: "800", marginTop: space.sm },
-  overlay: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
-  levelCard: { backgroundColor: colors.bgPanel, borderRadius: radius.lg, padding: space.xl, alignItems: "center", borderWidth: 3, borderColor: colors.accent },
-  levelText: { color: colors.text, fontSize: 18, marginTop: space.sm, textAlign: "center" },
-  levelTap: { color: colors.textDim, fontSize: 13, marginTop: space.md },
-  foundLabel: { color: colors.gold, fontSize: 18, fontWeight: "900", letterSpacing: 0.5, textTransform: "uppercase" },
-  foundImgBox: { ...slot, backgroundColor: colors.bgDeep, width: 130, height: 130, borderRadius: radius.md, alignItems: "center", justifyContent: "center", padding: space.sm, marginTop: space.md },
+  endTitle: { color: colors.textBright, fontSize: 28, fontFamily: font.displayBold, marginTop: space.sm },
+  overlay: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: "rgba(8,10,32,0.7)", alignItems: "center", justifyContent: "center" },
+  bannerCard: { borderRadius: radius.lg, padding: space.xl, alignItems: "center", borderWidth: 2, borderColor: colors.gold, overflow: "hidden", ...glassShadow },
+  levelText: { color: colors.text, fontSize: 18, fontFamily: font.body, marginTop: space.sm, textAlign: "center" },
+  levelTap: { color: colors.textDim, fontSize: 13, fontFamily: font.body, marginTop: space.md },
+  foundLabel: { color: colors.gold, fontSize: 18, fontFamily: font.bodyHeavy, letterSpacing: 1, textTransform: "uppercase" },
+  foundImgBox: { width: 130, height: 130, borderRadius: radius.md, alignItems: "center", justifyContent: "center", padding: space.sm, marginTop: space.md },
   foundImg: { width: "100%", height: "100%" },
 });

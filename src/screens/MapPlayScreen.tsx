@@ -1,9 +1,8 @@
-// Overworld map player (B3). The episode plays out on a panning, zooming map:
-// the hero walks the SPINE node→node, the camera pulls back to frame the trip
-// then zooms in on arrival, a dotted path connects the nodes, and each scene
-// resolves in a tray. Branches/dice/combat live in the tray, so the hero only
-// walks the spine.
-import React, { useEffect, useRef, useState } from "react";
+// Overworld map player (B3) with the "Nightshade" treatment: the real forest map
+// gets a moonlit indigo wash (so it reads as gentle twilight, not pitch black),
+// the hero walks the SPINE node→node along a glowing gold trail with a warm glow
+// spotlighting the current node, and each scene resolves in a frosted-glass tray.
+import React, { useEffect, useId, useRef, useState } from "react";
 import {
   Animated,
   Image,
@@ -15,14 +14,16 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
+import Svg, { Circle, Defs, Line, RadialGradient, Rect, Stop } from "react-native-svg";
 import { avatarImage, mapImage, MapNode, spineNodes } from "../content";
 import { useEpisodeRunner, SceneInteraction, LevelUpBanner, ItemFoundBanner } from "../scene";
-import { colors, radius, space } from "../theme";
+import { Glow, Overline } from "../nightshade";
+import { colors, font, radius, space } from "../theme";
 import { Btn } from "../ui";
 
 const HERO = 80; // character cutout (transparent full-body sprite), not a circle crop
 const NODE = 38;
-const DOT = 9;
 const MAP_ASPECT = 1024 / 1536; // placeholder map w/h; per-episode when real maps land
 const BASE = 1.7; // map layout size vs viewport (room to pan at the most zoomed-out level)
 const Z_REST = 1.0; // zoom when resting at a node
@@ -48,8 +49,6 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
   // Anchor the cutout's feet near the node (it stands on the node, not centered on it).
   const heroTopLeft = (n: MapNode) => ({ x: n.pos.x * mapW - HERO / 2, y: n.pos.y * mapH - HERO * 0.82 });
 
-  // Camera translate to centre a map point at zoom z (scale is about the layer
-  // centre), clamped so the scaled map always covers the viewport.
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
   const camForPoint = (px: number, py: number, z: number) => ({
     x: clamp(width / 2 - mapW / 2 - z * (px - mapW / 2), width - (mapW / 2) * (1 + z), (mapW / 2) * (z - 1)),
@@ -60,8 +59,6 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
     return camForPoint(c.x, c.y, z);
   };
 
-  // Where the hero stands now. On resume into a sub-scene (no node of its own),
-  // stand at the most recent spine node at/before it in scene order.
   function resumeNode(): MapNode {
     const order = Object.keys(ep.scenes);
     const here = order.indexOf(runner.sceneId);
@@ -94,9 +91,6 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
     return () => loop.stop();
   }, [pulse]);
 
-  // When the story advances to a NEW spine node, close the tray and travel there:
-  // pull back to frame both nodes, walk the hero across, then zoom in on arrival
-  // with a little landing bounce. Sub-scenes keep the hero put.
   useEffect(() => {
     const target = nodes.find((n) => n.id === runner.sceneId);
     if (!target || target.id === heroNode.id) return;
@@ -130,19 +124,7 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
   }, [runner.sceneId]);
 
   const atStart = heroNode.index === 0 && runner.sceneId === ep.startScene;
-
-  // Dotted trail along the whole spine; walked segments gold, upcoming cream.
-  const dots: { key: string; x: number; y: number; done: boolean }[] = [];
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const a = nodeCenter(nodes[i]);
-    const b = nodeCenter(nodes[i + 1]);
-    const k = Math.max(2, Math.min(9, Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 44)));
-    const done = i + 1 <= heroIndex;
-    for (let j = 1; j < k; j++) {
-      const t = j / k;
-      dots.push({ key: `${i}-${j}`, x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, done });
-    }
-  }
+  const heroC = nodeCenter(heroNode);
 
   return (
     <View style={styles.root}>
@@ -154,38 +136,75 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
       >
         {map ? <Image source={map} style={{ width: mapW, height: mapH }} resizeMode="cover" /> : null}
 
-        {dots.map((d) => (
-          <View key={d.key} style={[styles.dot, d.done ? styles.dotDone : styles.dotNext, { left: d.x - DOT / 2, top: d.y - DOT / 2 }]} />
-        ))}
+        {/* moonlit "nightshade" wash: darken + cool moonlight + warm glow on hero */}
+        <MapWash w={mapW} h={mapH} hx={heroC.x} hy={heroC.y} />
 
+        {/* gold trail + star nodes */}
+        <Svg width={mapW} height={mapH} style={StyleSheet.absoluteFill} pointerEvents="none">
+          {nodes.slice(0, -1).map((n, i) => {
+            const a = nodeCenter(n);
+            const b = nodeCenter(nodes[i + 1]);
+            const done = i + 1 <= heroIndex;
+            return (
+              <Line
+                key={`s${i}`}
+                x1={a.x}
+                y1={a.y}
+                x2={b.x}
+                y2={b.y}
+                stroke={colors.gold}
+                strokeWidth={done ? 3 : 2}
+                strokeLinecap="round"
+                strokeDasharray={done ? undefined : "2 9"}
+                opacity={done ? 0.9 : 0.4}
+              />
+            );
+          })}
+          {/* open-ended: trail continues off the top past the last node */}
+          {nodes.length > 0
+            ? (() => {
+                const last = nodeCenter(nodes[nodes.length - 1]);
+                return <Line x1={last.x} y1={last.y} x2={last.x} y2={last.y - 140} stroke={colors.gold} strokeWidth={2} strokeDasharray="2 9" strokeLinecap="round" opacity={0.22} />;
+              })()
+            : null}
+          {nodes.map((n) => {
+            const c = nodeCenter(n);
+            const done = n.index < heroIndex;
+            const current = n.index === heroIndex;
+            if (current) return <Circle key={n.id} cx={c.x} cy={c.y} r={7} fill={colors.gold} opacity={0.95} />;
+            return <Circle key={n.id} cx={c.x} cy={c.y} r={done ? 6 : 4} fill={done ? colors.gold : "#fff"} opacity={done ? 0.9 : 0.4} />;
+          })}
+        </Svg>
+
+        {/* pulsing ring on the current node */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.curRing, { left: heroC.x - 19, top: heroC.y - 19, transform: [{ scale: pulse }] }]}
+        />
+
+        {/* tap target on the current node */}
         {nodes.map((n) => {
           const c = nodeCenter(n);
           const isCurrent = n.index === heroIndex;
-          const done = n.index < heroIndex;
           return (
             <Pressable
-              key={n.id}
+              key={`hit-${n.id}`}
               disabled={!isCurrent || modalOpen || traveling}
               onPress={() => setModalOpen(true)}
               style={[styles.nodeHit, { left: c.x - NODE / 2, top: c.y - NODE / 2 }]}
-            >
-              <Animated.View
-                style={[styles.node, done && styles.nodeDone, isCurrent && styles.nodeCurrent, isCurrent && { transform: [{ scale: pulse }] }]}
-              >
-                <Text style={styles.nodeLabel}>{done ? "✓" : n.index + 1}</Text>
-              </Animated.View>
-            </Pressable>
+            />
           );
         })}
 
         <Animated.View style={[styles.hero, { transform: [...heroXY.current.getTranslateTransform(), { scale: heroScale }] }]}>
+          <Glow size={HERO * 1.7} color={colors.gold} opacity={0.4} style={{ position: "absolute", left: -HERO * 0.35, top: -HERO * 0.2 }} />
           {avatar ? <Image source={avatar} style={styles.heroImg} resizeMode="contain" /> : null}
         </Animated.View>
       </Animated.View>
 
       <SafeAreaView style={styles.topBar} pointerEvents="box-none">
         <Pressable onPress={onExit} hitSlop={12}>
-          <Text style={styles.topIcon}>‹ Menü</Text>
+          <Text style={styles.back}>‹ Reise</Text>
         </Pressable>
         <Text style={styles.title} numberOfLines={1}>
           {ep.title}
@@ -195,7 +214,7 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
 
       {!modalOpen && !traveling ? (
         <View style={styles.cta} pointerEvents="box-none">
-          <Btn title={atStart ? "▶ Los geht's!" : "▶ Weiter"} kind="gold" onPress={() => setModalOpen(true)} />
+          <Btn title={atStart ? "Los geht's ✦" : "Weiterreisen ✦"} kind="gold" onPress={() => setModalOpen(true)} />
         </View>
       ) : null}
 
@@ -207,9 +226,36 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
   );
 }
 
+// The moonlit wash, layered over the map image (RN has no mix-blend-mode, so we
+// approximate: a dark-indigo darken + cool moonlight from the top + a warm gold
+// spotlight around the hero node + a soft vignette).
+function MapWash({ w, h, hx, hy }: { w: number; h: number; hx: number; hy: number }) {
+  const uid = useId().replace(/:/g, "");
+  return (
+    <Svg width={w} height={h} style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Defs>
+        <RadialGradient id={`moon-${uid}`} cx="72%" cy="3%" r="60%">
+          <Stop offset="0%" stopColor="#aab8ff" stopOpacity={0.28} />
+          <Stop offset="55%" stopColor="#aab8ff" stopOpacity={0} />
+        </RadialGradient>
+        <RadialGradient id={`hero-${uid}`} cx={`${(hx / w) * 100}%`} cy={`${(hy / h) * 100}%`} r="20%">
+          <Stop offset="0%" stopColor="#ffd479" stopOpacity={0.34} />
+          <Stop offset="100%" stopColor="#ffd479" stopOpacity={0} />
+        </RadialGradient>
+        <RadialGradient id={`vig-${uid}`} cx="50%" cy="42%" r="75%">
+          <Stop offset="58%" stopColor="#0a0c28" stopOpacity={0} />
+          <Stop offset="100%" stopColor="#0a0c28" stopOpacity={0.55} />
+        </RadialGradient>
+      </Defs>
+      <Rect x={0} y={0} width={w} height={h} fill="#1e2252" fillOpacity={0.4} />
+      <Rect x={0} y={0} width={w} height={h} fill={`url(#moon-${uid})`} />
+      <Rect x={0} y={0} width={w} height={h} fill={`url(#hero-${uid})`} />
+      <Rect x={0} y={0} width={w} height={h} fill={`url(#vig-${uid})`} />
+    </Svg>
+  );
+}
+
 /* ---------------------------------------------------- scene tray over the map */
-// A bottom sheet that slides up on open and auto-sizes to its content, so plain
-// narration leaves the map visible above and only dice/combat grow it (capped).
 function SceneModal({ runner, onExit }: { runner: ReturnType<typeof useEpisodeRunner>; onExit: () => void }) {
   const [showText, setShowText] = useState(false);
   const { text, anchor, revealNow } = runner;
@@ -222,14 +268,22 @@ function SceneModal({ runner, onExit }: { runner: ReturnType<typeof useEpisodeRu
   return (
     <View style={styles.modalWrap} pointerEvents="box-none">
       <Animated.View style={[styles.tray, { opacity: slide, transform: [{ translateY }] }]}>
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(22,26,60,0.55)" }]} />
         <View style={styles.trayHandle} />
         <Pressable onPress={() => setShowText((v) => !v)} hitSlop={12} style={styles.trayBook}>
-          <Text style={styles.topIcon}>{showText ? "📖 ✕" : "📖"}</Text>
+          <Text style={styles.bookIcon}>{showText ? "✕" : "📖"}</Text>
         </Pressable>
         <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
-          {revealNow && anchor ? <Image source={anchor} style={styles.anchorImg} resizeMode="contain" /> : null}
+          {revealNow && anchor ? (
+            <View style={styles.anchorWrap}>
+              <Glow size={190} color={colors.gold} opacity={0.4} style={{ position: "absolute" }} />
+              <Image source={anchor} style={styles.anchorImg} resizeMode="contain" />
+            </View>
+          ) : null}
           {showText ? (
             <View style={styles.textPanel}>
+              <Overline style={{ marginBottom: 6 }}>✦ Die Geschichte</Overline>
               <Text style={styles.narration}>{text}</Text>
             </View>
           ) : null}
@@ -245,45 +299,37 @@ const styles = StyleSheet.create({
   mapLayer: { position: "absolute", top: 0, left: 0 },
 
   topBar: { position: "absolute", top: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: space.md },
-  topIcon: { color: colors.text, fontSize: 18, fontWeight: "700", textShadowColor: "rgba(0,0,0,0.8)", textShadowRadius: 4 },
-  title: { flex: 1, textAlign: "center", color: colors.text, fontSize: 16, fontWeight: "800", textShadowColor: "rgba(0,0,0,0.8)", textShadowRadius: 4 },
+  back: { color: colors.text, fontSize: 17, fontFamily: font.bodyBold, textShadowColor: "rgba(0,0,0,0.8)", textShadowRadius: 4 },
+  title: { flex: 1, textAlign: "center", color: colors.text, fontSize: 16, fontFamily: font.displayBold, textShadowColor: "rgba(0,0,0,0.8)", textShadowRadius: 4 },
 
-  dot: { position: "absolute", width: DOT, height: DOT, borderRadius: DOT / 2, borderWidth: 1 },
-  dotDone: { backgroundColor: colors.gold, borderColor: colors.goldDeep },
-  dotNext: { backgroundColor: colors.parchment, borderColor: colors.panelDark, opacity: 0.8 },
+  nodeHit: { position: "absolute", width: NODE, height: NODE },
+  curRing: { position: "absolute", width: 38, height: 38, borderRadius: 19, borderWidth: 2, borderColor: colors.gold, opacity: 0.55 },
 
-  nodeHit: { position: "absolute", width: NODE, height: NODE, alignItems: "center", justifyContent: "center" },
-  node: { width: NODE, height: NODE, borderRadius: NODE / 2, backgroundColor: colors.panel, borderWidth: 2, borderColor: colors.panelEdge, borderBottomWidth: 4, borderBottomColor: colors.panelDark, alignItems: "center", justifyContent: "center" },
-  nodeDone: { backgroundColor: colors.greenDeep, borderColor: colors.green },
-  nodeCurrent: { borderColor: colors.gold, borderBottomColor: colors.goldDeep, backgroundColor: colors.goldDeep },
-  nodeLabel: { color: colors.text, fontSize: 16, fontWeight: "900" },
-
-  // Transparent character cutout, with a soft drop shadow so it sits on the map.
-  hero: { position: "absolute", top: 0, left: 0, width: HERO, height: HERO, shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 5, shadowOffset: { width: 0, height: 3 } },
-  heroImg: { width: "100%", height: "100%" },
+  hero: { position: "absolute", top: 0, left: 0, width: HERO, height: HERO, alignItems: "center", justifyContent: "center" },
+  heroImg: { width: "100%", height: "100%", shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 5, shadowOffset: { width: 0, height: 3 } },
 
   cta: { position: "absolute", left: 0, right: 0, bottom: space.xl, alignItems: "center" },
 
-  // Bottom sheet: anchored to the bottom, no full-screen dim, so the map stays
-  // visible above. Auto-sizes to content; caps + scrolls when tall (combat).
   modalWrap: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, justifyContent: "flex-end" },
   tray: {
     width: "100%",
-    maxHeight: "62%",
-    backgroundColor: colors.panel,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    borderWidth: 2,
+    maxHeight: "64%",
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    borderWidth: 1,
     borderBottomWidth: 0,
-    borderColor: colors.panelEdge,
+    borderColor: colors.glassBorder,
+    overflow: "hidden",
     paddingTop: space.sm,
     paddingHorizontal: space.sm,
     paddingBottom: space.lg,
   },
-  trayHandle: { alignSelf: "center", width: 44, height: 5, borderRadius: 3, backgroundColor: colors.panelEdge, marginBottom: space.xs },
+  trayHandle: { alignSelf: "center", width: 44, height: 5, borderRadius: 3, backgroundColor: colors.glassBorderStrong, marginBottom: space.xs },
   trayBook: { position: "absolute", right: space.md, top: space.sm, zIndex: 2 },
+  bookIcon: { fontSize: 18, color: colors.textDim },
   modalBody: { padding: space.sm, alignItems: "center" },
-  anchorImg: { width: "70%", height: 150, marginBottom: space.sm },
-  textPanel: { backgroundColor: colors.parchment, borderRadius: radius.md, padding: space.md, marginBottom: space.md, width: "100%" },
-  narration: { color: colors.ink, fontSize: 19, lineHeight: 28 },
+  anchorWrap: { width: "70%", height: 150, marginBottom: space.sm, alignItems: "center", justifyContent: "center" },
+  anchorImg: { width: "100%", height: "100%" },
+  textPanel: { backgroundColor: colors.glassFill, borderWidth: 1, borderColor: colors.glassBorder, borderRadius: radius.md, padding: space.md, marginBottom: space.md, width: "100%" },
+  narration: { color: colors.text, fontSize: 18, lineHeight: 27, fontFamily: font.body },
 });

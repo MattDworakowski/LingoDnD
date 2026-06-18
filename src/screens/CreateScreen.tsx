@@ -1,17 +1,9 @@
 import React, { useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native";
-import {
-  avatarImage,
-  characters,
-  CLASS_IDS,
-  ClassId,
-  Gender,
-  GENDER_LABELS,
-  STAT_LABELS,
-} from "../content";
+import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { avatarImage, characters, CLASS_IDS, ClassId, Gender, GENDER_LABELS, STAT_LABELS } from "../content";
 import { useGame } from "../state";
-import { colors, panel, radius, slot, space } from "../theme";
+import { GlassCard, Glow, Overline } from "../nightshade";
+import { colors, font, radius, space } from "../theme";
 import { Btn } from "../ui";
 
 export default function CreateScreen() {
@@ -25,33 +17,27 @@ export default function CreateScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll}>
+        <Overline color={colors.textDim} style={{ marginTop: space.sm }}>
+          Dein Abenteuer beginnt
+        </Overline>
         <Text style={styles.title}>Erstelle deinen Helden</Text>
 
-        {/* gender */}
         <View style={styles.row}>
           {(["junge", "maedchen"] as Gender[]).map((g) => (
             <Chip key={g} label={GENDER_LABELS[g]} active={gender === g} onPress={() => setGender(g)} />
           ))}
         </View>
 
-        {/* avatar preview */}
-        <View style={styles.avatarBox}>
-          {avatar ? (
-            <Image source={avatar} style={styles.avatar} resizeMode="contain" />
-          ) : (
-            <Text style={styles.dim}>{def.name}</Text>
-          )}
+        <View style={styles.avatarOuter}>
+          <Glow size={300} color={colors.gold} opacity={0.4} style={{ position: "absolute" }} />
+          <GlassCard style={styles.avatarBox} contentStyle={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+            {avatar ? <Image source={avatar} style={styles.avatar} resizeMode="contain" /> : <Text style={styles.dim}>{def.name}</Text>}
+          </GlassCard>
         </View>
 
-        {/* class */}
         <View style={styles.row}>
           {CLASS_IDS.map((c) => (
-            <Chip
-              key={c}
-              label={characters.classes[c].name}
-              active={classId === c}
-              onPress={() => setClassId(c)}
-            />
+            <Chip key={c} label={characters.classes[c].name} active={classId === c} onPress={() => setClassId(c)} />
           ))}
         </View>
 
@@ -60,7 +46,7 @@ export default function CreateScreen() {
           Hauptkraft: <Text style={styles.primaryVal}>{STAT_LABELS[def.primary]}</Text>
         </Text>
 
-        <Btn title="Los geht's!" kind="gold" onPress={() => createCharacter(gender, classId)} style={{ marginTop: space.lg }} />
+        <Btn title="Los geht's ✦" kind="gold" onPress={() => createCharacter(gender, classId)} style={{ marginTop: space.lg, alignSelf: "stretch" }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -75,31 +61,19 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: "transparent" },
   scroll: { padding: space.lg, alignItems: "center" },
-  title: { color: colors.gold, fontSize: 28, fontWeight: "900", letterSpacing: 0.5, textTransform: "uppercase", marginVertical: space.md, textAlign: "center" },
+  title: { color: colors.textBright, fontSize: 28, fontFamily: font.displayBold, marginBottom: space.md, textAlign: "center", textShadowColor: "rgba(255,212,121,0.5)", textShadowRadius: 12 },
   row: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: space.sm, marginVertical: space.sm },
-  chip: {
-    ...slot,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: radius.pill,
-  },
-  chipActive: { borderColor: colors.gold, borderTopColor: colors.gold, backgroundColor: colors.greenDeep },
-  chipText: { color: colors.textDim, fontSize: 18, fontWeight: "700" },
-  chipTextActive: { color: colors.text },
-  avatarBox: {
-    ...panel,
-    backgroundColor: colors.bgDeep,
-    width: 240,
-    height: 280,
-    alignItems: "center",
-    justifyContent: "center",
-    marginVertical: space.md,
-  },
+  chip: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: radius.pill, backgroundColor: colors.glassFill, borderWidth: 1, borderColor: colors.glassBorder },
+  chipActive: { borderColor: colors.gold, backgroundColor: "rgba(255,212,121,0.18)" },
+  chipText: { color: colors.textDim, fontSize: 17, fontFamily: font.bodyBold },
+  chipTextActive: { color: colors.gold },
+  avatarOuter: { width: 240, height: 280, alignItems: "center", justifyContent: "center", marginVertical: space.md },
+  avatarBox: { width: 240, height: 280 },
   avatar: { width: "100%", height: "100%" },
-  dim: { color: colors.textDim, fontSize: 20 },
-  blurb: { color: colors.text, fontSize: 18, textAlign: "center", marginTop: space.sm, lineHeight: 26, paddingHorizontal: space.md },
-  primary: { color: colors.textDim, fontSize: 16, marginTop: space.sm },
-  primaryVal: { color: colors.accent, fontWeight: "800" },
+  dim: { color: colors.textDim, fontSize: 20, fontFamily: font.body },
+  blurb: { color: colors.text, fontSize: 17, fontFamily: font.body, textAlign: "center", marginTop: space.sm, lineHeight: 25, paddingHorizontal: space.md },
+  primary: { color: colors.textDim, fontSize: 16, fontFamily: font.body, marginTop: space.sm },
+  primaryVal: { color: colors.gold, fontFamily: font.bodyBold },
 });
