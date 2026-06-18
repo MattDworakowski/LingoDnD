@@ -4,7 +4,7 @@
 // PlayScreen and the overworld MapPlayScreen (B3) so they behave identically.
 import { AudioPlayer, createAudioPlayer } from "expo-audio";
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from "react-native";
+import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from "react-native";
 import {
   anchorImage,
   characters,
@@ -43,6 +43,7 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
 
   const [sceneId, setSceneId] = useState<string>(resume);
   const [audioDone, setAudioDone] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [levelUp, setLevelUp] = useState(false);
   const playerRef = useRef<AudioPlayer | null>(null);
 
@@ -59,6 +60,7 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
   // Audio: (re)starts when the scene becomes active; stopped while inactive.
   useEffect(() => {
     setAudioDone(false);
+    setPaused(false);
     release();
     if (!active) return;
     const src = sceneAudio(ep.id, scene, character.classId);
@@ -100,8 +102,22 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
       try {
         p.seekTo(0);
         p.play();
+        setPaused(false);
       } catch {}
     }
+  }
+  function togglePause() {
+    const p = playerRef.current;
+    if (!p) return;
+    try {
+      if (paused) {
+        p.play();
+        setPaused(false);
+      } else {
+        p.pause();
+        setPaused(true);
+      }
+    } catch {}
   }
   const go = (next: string) => setSceneId(next);
   function onMinigameDone(then: MiniThen, correct: boolean) {
@@ -120,6 +136,8 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
     audioDone,
     setAudioDone,
     replay,
+    togglePause,
+    paused,
     go,
     onMinigameDone,
     levelUp,
@@ -134,7 +152,7 @@ export function SceneInteraction({ runner, onExit }: { runner: EpisodeRunner; on
   if (!runner.audioDone) {
     return (
       <View style={styles.playingRow}>
-        <ActivityIndicator color={colors.accent} />
+        <IconButton icon={runner.paused ? "▶️" : "⏸️"} onPress={runner.togglePause} accessibilityLabel={runner.paused ? "Weiter abspielen" : "Pause"} />
         <IconButton icon="🔁" onPress={runner.replay} accessibilityLabel="Nochmal anhören" />
         <IconButton icon="⏭️" onPress={() => runner.setAudioDone(true)} accessibilityLabel="Überspringen" />
       </View>
