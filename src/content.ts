@@ -112,6 +112,20 @@ export function itemImage(ep: Episode, itemId: string): number | undefined {
   const it = ep.items[itemId];
   return it ? asset(`${ep.id}/${it.file}`) : undefined;
 }
+
+// Items are episode-scoped in content, but the hero's inventory is global across
+// the campaign — so resolve an item id against EVERY episode (e.g. the silver key
+// from ep1 must still show on the Held screen while you're playing ep2).
+function ownerOf(itemId: string): Episode | undefined {
+  return Object.values(EPISODES).find((e) => e.items && e.items[itemId]);
+}
+export function itemDefAny(itemId: string): ItemDef | undefined {
+  return ownerOf(itemId)?.items[itemId];
+}
+export function itemImageAny(itemId: string): number | undefined {
+  const e = ownerOf(itemId);
+  return e ? asset(`${e.id}/${e.items[itemId].file}`) : undefined;
+}
 export function coverImage(epId: string): number | undefined { return asset(`${epId}/cover.png`); }
 export function avatarImage(cls: ClassId, gender: Gender): number | undefined {
   return asset(`characters/${cls}_${gender}.png`);

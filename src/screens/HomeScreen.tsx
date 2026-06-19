@@ -4,9 +4,10 @@
 // furthest star (it animates up when a new episode unlocks), and tappable stars
 // to select/replay any unlocked episode. The Held tab is the hero + Sternen-Beutel.
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Animated, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Alert, Animated, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Line } from "react-native-svg";
-import { avatarImage, characters, coverImage, episodesInOrder, FIRST_EPISODE, furthestEpisodeIndex, getEpisode, itemDef, itemImage, spineNodes, STAT_LABELS, StatId } from "../content";
+import { avatarImage, characters, coverImage, episodesInOrder, furthestEpisodeIndex, getEpisode, itemDefAny, itemImageAny, spineNodes, STAT_LABELS, StatId } from "../content";
 import { useGame } from "../state";
 import { GlassCard, Glow, IconHero, IconStar, Overline } from "../nightshade";
 import { colors, font, radius, space } from "../theme";
@@ -16,14 +17,15 @@ type TabKey = "story" | "character";
 
 export default function HomeScreen({ onPlay }: { onPlay: () => void }) {
   const [tab, setTab] = useState<TabKey>("story");
+  const insets = useSafeAreaInsets();
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top }]}>
       <View style={styles.body}>{tab === "story" ? <ReiseTab onPlay={onPlay} /> : <HeldTab />}</View>
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, space.sm) }]}>
         <TabItem label="Reise" active={tab === "story"} onPress={() => setTab("story")} icon={<IconStar size={24} color={tab === "story" ? colors.gold : colors.textMuted} />} />
         <TabItem label="Held" active={tab === "character"} onPress={() => setTab("character")} icon={<IconHero size={24} color={tab === "character" ? colors.gold : colors.textMuted} />} />
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -40,9 +42,9 @@ function TabItem({ label, active, onPress, icon }: { label: string; active: bool
 const LOCKET = 80;
 const MARK = 46; // episode star marker
 const FUTURE = 3; // faint "upcoming" stars above the last episode
-const GAP = 188;
-const TOP_PAD = 90;
-const BOTTOM_PAD = 180; // clears the pinned episode card so the bottom star can scroll above it
+const GAP = 150;
+const TOP_PAD = 80;
+const BOTTOM_PAD = 290; // empty space below the bottom star so it (and a completed neighbour) clears the pinned card
 // Remembered across Home unmount/remount (play is a separate screen) so that
 // returning after finishing an episode animates the hero UP from the old star.
 let lastFurthest = -1;
@@ -51,6 +53,7 @@ function ReiseTab({ onPlay }: { onPlay: () => void }) {
   const { character, progress, completed, setProgress } = useGame();
   const { width, height } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
+  const [scrollH, setScrollH] = useState(0);
 
   const furthest = furthestEpisodeIndex(completed, progress?.episodeId);
   const episodes = episodesInOrder();
@@ -80,12 +83,14 @@ function ReiseTab({ onPlay }: { onPlay: () => void }) {
     lastFurthest = furthest;
   }, [furthest, heroAnim, heroScale]);
 
-  // auto-scroll so the hero's star sits comfortably above the pinned card.
+  // auto-scroll so the hero's star sits in the upper third of the visible area,
+  // leaving the completed star just below it clear of the pinned card.
   useEffect(() => {
-    const t = setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, py(furthest) - height * 0.42), animated: true }), 140);
+    const vp = scrollH || height;
+    const t = setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, py(furthest) - vp * 0.32), animated: true }), 140);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [furthest, contentH, height]);
+  }, [furthest, contentH, scrollH, height]);
 
   if (!character) return null;
   const avatar = avatarImage(character.classId, character.gender);
@@ -121,7 +126,7 @@ function ReiseTab({ onPlay }: { onPlay: () => void }) {
         <Text style={styles.caption}>✦ …die Reise geht weiter</Text>
       </View>
 
-      <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ height: contentH }} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ height: contentH }} showsVerticalScrollIndicator={false} onLayout={(e) => setScrollH(e.nativeEvent.layout.height)}>
         {/* trail + faint upcoming stars */}
         <Svg width={width} height={contentH} style={StyleSheet.absoluteFill} pointerEvents="none">
           {Array.from({ length: pointCount - 1 }, (_, p) => {
@@ -207,7 +212,7 @@ const REL_COLS = 4;
 const REL_MIN = 4;
 
 function HeldTab() {
-  const { character, progress, resetAll } = useGame();
+  const { character, resetAll } = useGame();
   const { width } = useWindowDimensions();
   const [detailId, setDetailId] = useState<string | null>(null);
   const pulse = useRef(new Animated.Value(0)).current;
@@ -225,14 +230,13 @@ function HeldTab() {
 
   const def = characters.classes[character.classId];
   const avatar = avatarImage(character.classId, character.gender);
-  const ep = getEpisode(progress?.episodeId ?? FIRST_EPISODE);
   const statOrder: StatId[] = ["staerke", "magie", "charisma"];
   const xpPct = Math.round((character.xp / 3) * 100);
 
   const owned = character.items;
   const slotCount = Math.max(REL_MIN, Math.ceil(owned.length / REL_COLS) * REL_COLS);
   const relSize = (width - space.lg * 2 - space.sm * (REL_COLS - 1)) / REL_COLS;
-  const detail = detailId ? itemDef(ep, detailId) : undefined;
+  const detail = detailId ? itemDefAny(detailId) : undefined;
 
   const confirmReset = () =>
     Alert.alert("Neuen Helden erstellen?", "Dein aktueller Held und dein Fortschritt gehen dabei verloren.", [
@@ -299,7 +303,7 @@ function HeldTab() {
         <View style={styles.relGrid}>
           {Array.from({ length: slotCount }, (_, i) => {
             const id = owned[i];
-            const img = id ? itemImage(ep, id) : undefined;
+            const img = id ? itemImageAny(id) : undefined;
             return (
               <Pressable key={i} disabled={!id} onPress={() => id && setDetailId(id)} style={[styles.relSlot, { width: relSize, height: relSize }, id ? styles.relSlotFilled : styles.relSlotEmpty]}>
                 {img ? <Image source={img} style={styles.relImg} resizeMode="contain" /> : null}
@@ -319,7 +323,7 @@ function HeldTab() {
           <Glow size={300} color={colors.gold} opacity={0.4} style={{ position: "absolute" }} />
           <GlassCard strong style={{ width: "100%", maxWidth: 340 }} contentStyle={{ alignItems: "center", padding: space.lg }}>
             <View style={styles.cardImgBox}>
-              {itemImage(ep, detailId!) ? <Image source={itemImage(ep, detailId!)} style={styles.relImg} resizeMode="contain" /> : null}
+              {itemImageAny(detailId!) ? <Image source={itemImageAny(detailId!)} style={styles.relImg} resizeMode="contain" /> : null}
             </View>
             <Text style={styles.cardName}>{detail.name}</Text>
             {detail.bonus ? <Text style={styles.cardBonus}>✨ {detail.bonus}</Text> : null}
@@ -367,9 +371,9 @@ const styles = StyleSheet.create({
   fill: { height: "100%", borderRadius: 4 },
 
   // bottom nav
-  tabBar: { flexDirection: "row", backgroundColor: colors.tabBar, borderTopWidth: 1, borderTopColor: colors.glassBorder, paddingTop: space.sm, paddingBottom: space.xs },
-  tabItem: { flex: 1, alignItems: "center", paddingVertical: space.xs },
-  tabIconWrap: { width: 46, height: 32, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
+  tabBar: { flexDirection: "row", backgroundColor: colors.tabBar, borderTopWidth: 1, borderTopColor: colors.glassBorder, paddingTop: space.xs },
+  tabItem: { flex: 1, alignItems: "center", paddingVertical: 2 },
+  tabIconWrap: { width: 42, height: 28, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
   tabIconWrapOn: { backgroundColor: "rgba(255,212,121,0.16)" },
   tabLabel: { color: colors.textMuted, fontSize: 11, fontFamily: font.bodyBold, marginTop: 2 },
   tabLabelOn: { color: colors.gold },

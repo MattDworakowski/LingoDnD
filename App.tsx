@@ -9,6 +9,7 @@ import {
 import { Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold } from "@expo-google-fonts/nunito";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GameProvider, useGame } from "./src/state";
 import CreateScreen from "./src/screens/CreateScreen";
 import HomeScreen from "./src/screens/HomeScreen";
@@ -60,9 +61,11 @@ function Root() {
 
 export default function App() {
   return (
-    <GameProvider>
-      <StatusBar style="light" />
-      <Root />
-    </GameProvider>
+    <SafeAreaProvider>
+      <GameProvider>
+        <StatusBar style="light" />
+        <Root />
+      </GameProvider>
+    </SafeAreaProvider>
   );
 }
