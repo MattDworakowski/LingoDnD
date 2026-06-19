@@ -1,0 +1,165 @@
+{
+  "id": "episode-02",
+  "campaign": "sternstein",
+  "episode": 2,
+  "title": "Der Pfad ins Gebirge",
+  "language": "de",
+  "startScene": "scene_1",
+  "revealImages": "afterAudio",
+  "mapImage": "map.png",
+  "coverPrompt": "a young hero in a warm cloak climbing a snowy mountain path at dawn, a great palace of pale blue ice on the peak high above, the stolen star-stone glowing faintly at the very top, adventurous wintry storybook mood",
+  "mapPrompt": "a tall vertical snowy fantasy mountain region, a winding trail from the BOTTOM to the TOP: at the bottom the snowy edge of a green forest where the dark woods meet the white mountains, the trail climbs up a steep snowy pine slope, across an old broken rope bridge over a deep icy chasm, up to a great old gate of stone and ice set into the mountainside, into a glittering blue ice cave, past a tall frozen waterfall, all the way up to a great palace of pale blue ice on the misty snow-capped peak at the very top, distinct landmarks clearly spaced along the path",
+  "anchors": {
+    "sternstein": { "prompt": "a glowing magical star-shaped stone radiating warm golden light, resting on a throne of pale blue ice", "file": "sternstein.png" },
+    "schneefuchs": { "prompt": "a friendly small arctic fox with fluffy snow-white fur and a little black nose, sitting, bright kind eyes", "file": "schneefuchs.png" },
+    "eisbaer": { "prompt": "a big friendly polar bear curled up and sleeping peacefully, cozy and gentle, not scary", "file": "eisbaer.png" },
+    "schneetroll": { "prompt": "a big shaggy white snow troll with a round bulbous nose and a friendly-grumpy face, holding a small wooden club, comical and not scary, standing", "file": "schneetroll.png" },
+    "dieb": { "prompt": "a hooded thief in a forest-green cloak, a black raven perched on his shoulder, standing in a hall of pale blue ice", "file": "dieb.png" }
+  },
+  "items": {
+    "frostsplitter": { "name": "Frostsplitter", "slot": "splitter", "prompt": "a small glowing shard of pale blue ice crystal, radiating magical frost", "file": "frostsplitter.png", "desc": "Ein eiskalter, blau leuchtender Splitter aus dem alten Bergtor. Er fühlt sich nach uralter Magie an. Woher kommt nur diese große Kälte?" }
+  },
+  "scenes": {
+    "scene_1": {
+      "narration": "Der Morgen ist kalt und klar. Vor dir liegt das hohe Gebirge. Überall liegt tiefer Schnee. Der Wind ist eisig und beißt dir in die Wangen. Hier endet der Wald, und hier beginnt der Berg. Du denkst an den Sternstein. Ohne sein warmes Licht wird der Winter immer länger und kälter. Du musst ihn zurückholen. Im weißen Schnee siehst du frische Fußspuren. Der Dieb ist hier hinaufgestiegen. Du ziehst deinen Mantel enger und folgst der Spur den Berg hinauf. Du bist tapfer. Du schaffst das.",
+      "audio": "scene_1.mp3",
+      "anchor": "sternstein",
+      "map": { "x": 0.42, "y": 0.92 },
+      "then": { "type": "next", "next": "scene_2" }
+    },
+    "scene_2": {
+      "narration": "Im Schnee sitzt ein kleiner Fuchs. Sein Fell ist weiß wie der Schnee, nur die Nase ist schwarz. Der Schneefuchs schaut dich mit klugen Augen an. Er sagt: Du suchst den Dieb mit dem grünen Umhang? Den habe ich gesehen! Er ist hoch hinauf zum alten Bergtor gestiegen. Pass gut auf, sagt der Fuchs, der Berg ist kalt und der Weg ist steil. Dann schnuppert er in der Luft. Komm, ich zeige dir den Anfang des Weges. Gemeinsam stapft ihr durch den tiefen Schnee.",
+      "audio": "scene_2.mp3",
+      "anchor": "schneefuchs",
+      "then": {
+        "type": "minigame",
+        "kind": "memory",
+        "question": "Wohin ist der Dieb gestiegen?",
+        "options": ["Zum alten Bergtor", "Zum Fluss", "In die Stadt"],
+        "correct": 0,
+        "xp": 1,
+        "next": "scene_3"
+      }
+    },
+    "scene_3": {
+      "narration": "Der Schneefuchs muss zurück zu seinem Bau. Allein gehst du weiter den Berg hinauf. Bald hört der Pfad ganz auf. Um dich herum ist nur weißer Schnee. Frischer Schnee fällt und deckt alles langsam zu. Wohin ist der Dieb gegangen? Du schaust dich ganz genau um. Findest du die Spur im Schnee?",
+      "audio": "scene_3.mp3",
+      "map": { "x": 0.38, "y": 0.76 },
+      "then": {
+        "type": "skillcheck",
+        "skill": "Wahrnehmung",
+        "prompt": "Würfle für Wahrnehmung – findest du die Spur im Schnee?",
+        "branches": [
+          { "min": 1, "max": 9, "next": "scene_3b" },
+          { "min": 10, "max": 20, "next": "scene_3a" }
+        ]
+      }
+    },
+    "scene_3a": {
+      "narration": "Du schaust ganz genau hin. Im weichen Schnee siehst du tiefe Fußspuren. An einem spitzen Felsen hängt ein Faden, grün wie Tannen. Der ist vom Umhang des Diebes! Die Spur führt steil nach oben. Du folgst ihr den Berg hinauf.",
+      "audio": "scene_3a.mp3",
+      "then": { "type": "next", "next": "scene_4" }
+    },
+    "scene_3b": {
+      "narration": "Du suchst und suchst, aber der Schnee hat schon alles zugedeckt. Da hörst du ein helles Bellen. Der kleine Schneefuchs kommt zurück! Diesen Berg kenne ich gut, sagt er. Folge mir! Der Fuchs springt leicht über den Schnee und zeigt dir den Weg nach oben. Du bist froh, nicht allein zu sein.",
+      "audio": "scene_3b.mp3",
+      "anchor": "schneefuchs",
+      "then": { "type": "next", "next": "scene_4" }
+    },
+    "scene_4": {
+      "narrationByClass": {
+        "krieger": { "text": "Vor dir öffnet sich eine tiefe Schlucht. Eine alte Seilbrücke führt hinüber, aber die Bretter sind zerbrochen. Auf der anderen Seite geht die Spur weiter. Du bist stark. Du greifst nach dem dicken Seil und ziehst dich Hand über Hand hinüber. Der Wind zieht an dir, aber du hältst fest und kommst sicher auf der anderen Seite an.", "audio": "scene_4_krieger.mp3" },
+        "magier": { "text": "Vor dir öffnet sich eine tiefe Schlucht. Eine alte Seilbrücke führt hinüber, aber die Bretter sind zerbrochen. Auf der anderen Seite geht die Spur weiter. Du kannst zaubern. Du sprichst einen Zauber, und aus dem Schnee wächst eine glitzernde Brücke aus Eis. Vorsichtig gehst du über das glatte Eis hinüber.", "audio": "scene_4_magier.mp3" },
+        "barde": { "text": "Vor dir öffnet sich eine tiefe Schlucht. Eine alte Seilbrücke führt hinüber, aber die Bretter sind zerbrochen. Auf der anderen Seite geht die Spur weiter. Am Rand steht eine große Bergziege mit krummen Hörnern. Du sprichst ruhig und freundlich mit ihr. Die Ziege versteht dich. Du steigst auf ihren Rücken, und mit einem großen Sprung bringt sie dich sicher über die Schlucht.", "audio": "scene_4_barde.mp3" }
+      },
+      "map": { "x": 0.68, "y": 0.70 },
+      "then": { "type": "next", "next": "scene_5" }
+    },
+    "scene_5": {
+      "narration": "Der Weg führt in eine dunkle Eishöhle. Von der Decke hängen lange, spitze Eiszapfen. Tief drinnen glitzert etwas Blaues. Es ist kalt und ganz still. Plötzlich hörst du ein tiefes Brummen aus dem Dunkeln. Traust du dich hinein?",
+      "audio": "scene_5.mp3",
+      "map": { "x": 0.44, "y": 0.55 },
+      "then": {
+        "type": "skillcheck",
+        "skill": "Mut",
+        "prompt": "Würfle für Mut – gehst du in die Höhle?",
+        "branches": [
+          { "min": 1, "max": 9, "next": "scene_5b" },
+          { "min": 10, "max": 20, "next": "scene_5a" }
+        ]
+      }
+    },
+    "scene_5a": {
+      "narration": "Du atmest tief ein und gehst mutig in die Höhle. Das tiefe Brummen kommt von einem großen Eisbären. Er liegt zusammengerollt und schläft ganz fest. Leise schleichst du an seinem warmen Fell vorbei. Auf der anderen Seite siehst du schon Licht: den Weg zum alten Bergtor.",
+      "audio": "scene_5a.mp3",
+      "anchor": "eisbaer",
+      "then": { "type": "next", "next": "scene_6" }
+    },
+    "scene_5b": {
+      "narration": "Du erschrickst und bleibst stehen. Aber dann denkst du an den Sternstein. Ganz langsam gehst du weiter. Das Brummen kommt von einem großen Eisbären, der tief und fest schläft. Du musst fast lachen. Leise und vorsichtig schleichst du an ihm vorbei zum Ausgang.",
+      "audio": "scene_5b.mp3",
+      "anchor": "eisbaer",
+      "then": { "type": "next", "next": "scene_6" }
+    },
+    "scene_6": {
+      "narration": "Am Ende der Höhle steht ein altes Tor aus Stein und Eis. Davor sitzt ein großer Schneetroll. Sein Fell ist weiß und zottelig, und er hat eine dicke Knolle als Nase. Als er dich sieht, springt er auf und brummt: Niemand kommt durch mein Tor! Er stampft mit den Füßen, dass der Schnee nur so fliegt.",
+      "audio": "scene_6.mp3",
+      "anchor": "schneetroll",
+      "map": { "x": 0.40, "y": 0.37 },
+      "then": {
+        "type": "combat",
+        "enemy": { "name": "Schneetroll", "hp": 10, "hitTarget": 10, "damage": 2, "anchor": "schneetroll" },
+        "playerHitDamage": 3,
+        "talkOut": { "stat": "charisma", "target": 12, "next": "scene_6_talk" },
+        "winNext": "scene_6_win"
+      }
+    },
+    "scene_6_talk": {
+      "narration": "Du sprichst ganz ruhig mit dem Troll. Du erzählst ihm vom Sternstein und vom kalten Winter, der nicht enden will. Der Troll kratzt sich am Kopf. Na gut, brummt er. Du bist mutig und freundlich. Er steht auf und macht den Weg frei. Das Tor ist mit einem silbernen Schloss verschlossen. Du erinnerst dich an den silbernen Schlüssel aus dem Wald. Er passt genau! Im Schnee glitzert ein blauer Splitter. Du hebst ihn auf, er ist eiskalt. Dann gehst du durch das offene Tor.",
+      "audio": "scene_6_talk.mp3",
+      "grantItem": "frostsplitter",
+      "then": { "type": "next", "next": "scene_7" }
+    },
+    "scene_6_win": {
+      "narration": "Der Schneetroll setzt sich schwer in den Schnee. Schon gut, schon gut, brummt er. Du bist stark genug. Müde trottet er davon. Das Tor ist mit einem silbernen Schloss verschlossen. Da fällt dir der silberne Schlüssel aus dem Wald wieder ein. Er passt genau! Mit einem leisen Klick springt das Tor auf. Im Schnee glitzert ein blauer Splitter aus Eis und Magie. Du hebst ihn auf und gehst durch das Tor.",
+      "audio": "scene_6_win.mp3",
+      "grantItem": "frostsplitter",
+      "then": { "type": "next", "next": "scene_7" }
+    },
+    "scene_7": {
+      "narration": "Hinter dem Tor findest du eine kleine, windstille Höhle. Draußen stürmt der Schnee, aber hier drinnen ist es ruhig. Du machst ein kleines Feuer. Da huscht der Schneefuchs herein und legt sich neben dich ans warme Feuer. Hab keine Angst, sagt er leise. Du bist schon so weit gekommen. Du bist wirklich tapfer. Du wärmst deine Hände am Feuer und teilst dein letztes Stück Brot mit dem Fuchs. Für einen Moment ist dir ganz warm ums Herz. Morgen findest du den Dieb.",
+      "audio": "scene_7.mp3",
+      "anchor": "schneefuchs",
+      "map": { "x": 0.50, "y": 0.21 },
+      "then": {
+        "type": "minigame",
+        "kind": "comprehension",
+        "question": "Was teilst du mit dem Schneefuchs?",
+        "options": ["Brot", "Gold", "Eis"],
+        "correct": 0,
+        "xp": 1,
+        "next": "scene_8"
+      }
+    },
+    "scene_8": {
+      "narration": "Am Morgen kletterst du den letzten, steilen Pfad hinauf. Ganz oben öffnet sich eine große Halle aus blauem Eis. In der Mitte, auf einem Thron aus Eis, leuchtet schwach der Sternstein. Davor steht der Dieb mit dem grünen Umhang. Auf seiner Schulter sitzt der schwarze Rabe. Der Rabe krächzt laut, und es wird noch kälter. Der Dieb hört dich und dreht sich um. Schnell greift er nach dem Sternstein und rennt durch ein dunkles Tor tief in den Berg. Du läufst hinterher, doch das schwere Eistor fällt vor dir zu. So nah! Aber den Sternstein hast du noch nicht gerettet.",
+      "audio": "scene_8.mp3",
+      "anchor": "dieb",
+      "map": { "x": 0.56, "y": 0.08 },
+      "then": {
+        "type": "minigame",
+        "kind": "comprehension",
+        "question": "Wohin rennt der Dieb mit dem Sternstein?",
+        "options": ["Tief in den Berg", "Über den Fluss", "In den Wald"],
+        "correct": 0,
+        "xp": 1,
+        "next": "scene_end"
+      }
+    },
+    "scene_end": {
+      "narration": "Du hast auch dieses Abenteuer tapfer gemeistert. Der Dieb ist entkommen, aber du bist ihm jetzt ganz nah. Tief im Berg wartet schon das nächste Abenteuer. Bald rettest du den Sternstein. Fortsetzung folgt.",
+      "audio": "scene_end.mp3",
+      "then": { "type": "ending" }
+    }
+  }
+}

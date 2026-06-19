@@ -14,6 +14,7 @@ import {
   getEpisode,
   itemDef,
   itemImage,
+  nextEpisodeId,
   sceneAudio,
   sceneText,
   Scene,
@@ -141,6 +142,12 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
     if (correct && game.addXp(then.xp)) setLevelUp(true);
     go(then.next);
   }
+  // On finishing an episode (its ending scene), unlock the next one by moving
+  // progress to its start, so "Weiterreisen" continues the campaign.
+  function completeEpisode() {
+    const nid = nextEpisodeId(ep.id);
+    if (nid) game.setProgress({ episodeId: nid, sceneId: getEpisode(nid).startScene });
+  }
 
   return {
     ep,
@@ -157,6 +164,7 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
     paused,
     go,
     onMinigameDone,
+    completeEpisode,
     levelUp,
     setLevelUp,
     itemFound,
@@ -189,7 +197,12 @@ export function SceneInteraction({ runner, onExit }: { runner: EpisodeRunner; on
       </View>
     );
   }
-  return <SceneActions scene={runner.scene} character={runner.character} onGo={runner.go} onMinigameDone={runner.onMinigameDone} onExit={onExit} replay={runner.replay} />;
+  // Leaving an ending scene also advances the campaign to the next episode.
+  const handleExit = () => {
+    if (runner.scene.then?.type === "ending") runner.completeEpisode();
+    onExit();
+  };
+  return <SceneActions scene={runner.scene} character={runner.character} onGo={runner.go} onMinigameDone={runner.onMinigameDone} onExit={handleExit} replay={runner.replay} />;
 }
 
 function SceneActions(props: {

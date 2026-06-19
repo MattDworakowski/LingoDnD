@@ -2,6 +2,7 @@
 // media through the generated asset registry. See docs/episode-schema.md.
 import charactersJson from "../content/characters.json";
 import episode01Json from "../content/episode-01/episode.json";
+import episode02Json from "../content/episode-02/episode.json";
 import manifestJson from "../content/index.json";
 import { asset } from "./generated/assets";
 
@@ -56,9 +57,23 @@ export interface CharactersConfig {
 export const characters = charactersJson as unknown as CharactersConfig;
 export const manifest = manifestJson as { episodes: { id: string; title: string; cover: string; episode: number }[] };
 
-const EPISODES: Record<string, Episode> = { "episode-01": episode01Json as unknown as Episode };
+const EPISODES: Record<string, Episode> = {
+  "episode-01": episode01Json as unknown as Episode,
+  "episode-02": episode02Json as unknown as Episode,
+};
 export const FIRST_EPISODE = "episode-01";
 export function getEpisode(id: string): Episode { return EPISODES[id] ?? EPISODES[FIRST_EPISODE]; }
+
+// Episodes in campaign order (by `episode` number).
+export function episodesInOrder(): Episode[] {
+  return Object.values(EPISODES).sort((a, b) => a.episode - b.episode);
+}
+// The next episode after `id`, or null if this is the last one.
+export function nextEpisodeId(id: string): string | null {
+  const all = episodesInOrder();
+  const i = all.findIndex((e) => e.id === id);
+  return i >= 0 && i + 1 < all.length ? all[i + 1].id : null;
+}
 
 export const CLASS_IDS: ClassId[] = ["krieger", "magier", "barde"];
 export const GENDER_LABELS: Record<Gender, string> = { junge: "Junge", maedchen: "Mädchen" };
