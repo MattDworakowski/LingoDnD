@@ -1,10 +1,12 @@
-// Home shell: two tabs (Reise / Held) on a frosted glass nav bar. The Reise tab
-// is the "Sternenreise" constellation; the Held tab is the hero in a glowing
-// halo with stats, XP, and the "Sternen-Beutel" relic slots (inventory folded in).
+// Home shell: two tabs (Reise / Held) on a frosted glass nav bar.
+// The Reise tab is the "Sternenreise" — the campaign drawn as a constellation
+// you can pan: one star per episode, completed ones lit, the hero locket on your
+// furthest star (it animates up when a new episode unlocks), and tappable stars
+// to select/replay any unlocked episode. The Held tab is the hero + Sternen-Beutel.
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Animated, Image, LayoutChangeEvent, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Alert, Animated, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Svg, { Circle, Line } from "react-native-svg";
-import { avatarImage, characters, coverImage, FIRST_EPISODE, getEpisode, itemDef, itemImage, spineNodes, STAT_LABELS, StatId } from "../content";
+import { avatarImage, characters, coverImage, episodesInOrder, FIRST_EPISODE, furthestEpisodeIndex, getEpisode, itemDef, itemImage, spineNodes, STAT_LABELS, StatId } from "../content";
 import { useGame } from "../state";
 import { GlassCard, Glow, IconHero, IconStar, Overline } from "../nightshade";
 import { colors, font, radius, space } from "../theme";
@@ -35,89 +37,164 @@ function TabItem({ label, active, onPress, icon }: { label: string; active: bool
 }
 
 /* --------------------------------------------------------- Reise (constellation) */
-const NODES = [
-  { x: 0.5, y: 0.88 }, // current (hero)
-  { x: 0.32, y: 0.68 },
-  { x: 0.62, y: 0.52 },
-  { x: 0.4, y: 0.35 },
-  { x: 0.58, y: 0.19 },
-  { x: 0.47, y: 0.05 },
-];
-const LOCKET = 86;
+const LOCKET = 80;
+const MARK = 46; // episode star marker
+const FUTURE = 3; // faint "upcoming" stars above the last episode
+const GAP = 188;
+const TOP_PAD = 90;
+const BOTTOM_PAD = 180; // clears the pinned episode card so the bottom star can scroll above it
+// Remembered across Home unmount/remount (play is a separate screen) so that
+// returning after finishing an episode animates the hero UP from the old star.
+let lastFurthest = -1;
 
 function ReiseTab({ onPlay }: { onPlay: () => void }) {
-  const { character, progress } = useGame();
-  const [size, setSize] = useState({ w: 0, h: 0 });
+  const { character, progress, completed, setProgress } = useGame();
+  const { width, height } = useWindowDimensions();
+  const scrollRef = useRef<ScrollView>(null);
+
+  const furthest = furthestEpisodeIndex(completed, progress?.episodeId);
+  const episodes = episodesInOrder();
+  const pointCount = episodes.length + FUTURE;
+  const contentH = TOP_PAD + (pointCount - 1) * GAP + BOTTOM_PAD;
+  const xFrac = (p: number) => (p === 0 ? 0.5 : p % 2 === 1 ? 0.32 : 0.66);
+  const px = (p: number) => xFrac(p) * width;
+  const py = (p: number) => contentH - BOTTOM_PAD - p * GAP;
+
+  const startIdx = lastFurthest < 0 ? furthest : lastFurthest;
+  const [selected, setSelected] = useState(furthest);
+  const heroAnim = useRef(new Animated.Value(startIdx)).current;
+  const heroScale = useRef(new Animated.Value(1)).current;
+  const drawn = useRef(startIdx);
+
+  // when a new episode unlocks, glide the hero locket up to its star.
+  useEffect(() => {
+    if (furthest !== drawn.current) {
+      Animated.sequence([
+        Animated.timing(heroAnim, { toValue: furthest, duration: 900, useNativeDriver: true }),
+        Animated.timing(heroScale, { toValue: 1.18, duration: 140, useNativeDriver: true }),
+        Animated.spring(heroScale, { toValue: 1, friction: 4, useNativeDriver: true }),
+      ]).start();
+      drawn.current = furthest;
+      setSelected(furthest);
+    }
+    lastFurthest = furthest;
+  }, [furthest, heroAnim, heroScale]);
+
+  // auto-scroll so the hero's star sits comfortably above the pinned card.
+  useEffect(() => {
+    const t = setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, py(furthest) - height * 0.42), animated: true }), 140);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [furthest, contentH, height]);
+
   if (!character) return null;
-  const ep = getEpisode(progress?.episodeId ?? FIRST_EPISODE);
-  const spine = spineNodes(ep);
-  const total = spine.length;
-  const curIdx = progress ? Math.max(0, spine.findIndex((n) => n.id === progress.sceneId)) : 0;
-  const sceneNo = Math.min(total, curIdx + 1);
-  const pct = progress ? Math.round((sceneNo / total) * 100) : 0;
-  const cover = coverImage(ep.id);
   const avatar = avatarImage(character.classId, character.gender);
 
-  const onLayout = (e: LayoutChangeEvent) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height });
-  const pt = (i: number) => ({ x: NODES[i].x * size.w, y: NODES[i].y * size.h });
-  const hero = pt(0);
+  const epIdx = episodes.map((_, i) => i);
+  const heroLeft = episodes.length > 1 ? heroAnim.interpolate({ inputRange: epIdx, outputRange: epIdx.map((i) => px(i) - LOCKET / 2) }) : px(0) - LOCKET / 2;
+  const heroTop = episodes.length > 1 ? heroAnim.interpolate({ inputRange: epIdx, outputRange: epIdx.map((i) => py(i) - LOCKET / 2) }) : py(0) - LOCKET / 2;
+
+  // selected episode → episode card
+  const selEp = episodes[selected] ?? episodes[furthest];
+  const selIsCompleted = completed.includes(selEp.id);
+  const selStart = getEpisode(selEp.id).startScene;
+  const inProgress = progress?.episodeId === selEp.id && progress.sceneId !== selStart && !selIsCompleted;
+  const spine = spineNodes(selEp);
+  const total = spine.length;
+  const sceneNo = inProgress ? Math.min(total, Math.max(0, spine.findIndex((n) => n.id === progress!.sceneId)) + 1) : 0;
+  const pct = selIsCompleted ? 100 : inProgress ? Math.round((sceneNo / total) * 100) : 0;
+  const cover = coverImage(selEp.id);
+  const ctaLabel = selIsCompleted ? "Nochmal hören ✦" : inProgress ? "Weiterspielen ✦" : "Reise beginnen ✦";
+  const statusLabel = selIsCompleted ? "Abgeschlossen ✓" : inProgress ? `Szene ${sceneNo} von ${total}` : "Bereit für die Reise";
+
+  const playSelected = () => {
+    // resume the in-progress episode; (re)start completed or fresh ones.
+    if (!(progress?.episodeId === selEp.id) || selIsCompleted) setProgress({ episodeId: selEp.id, sceneId: selStart });
+    onPlay();
+  };
 
   return (
-    <View style={styles.reise}>
-      <Overline color={colors.textDim} style={{ textAlign: "center" }}>
-        Dein Sternbild
-      </Overline>
-      <Text style={styles.realm}>Aldoria</Text>
-      <Text style={styles.caption}>✦ …die Reise geht weiter</Text>
-
-      <View style={styles.sky} onLayout={onLayout}>
-        {size.w > 0 ? (
-          <>
-            <Svg width={size.w} height={size.h} style={StyleSheet.absoluteFill}>
-              {NODES.slice(0, -1).map((_, i) => {
-                const a = pt(i);
-                const b = pt(i + 1);
-                return (
-                  <Line key={`l${i}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={colors.gold} strokeWidth={2} strokeDasharray={i === 0 ? undefined : "2 7"} strokeLinecap="round" opacity={Math.max(0.12, 0.6 - i * 0.11)} />
-                );
-              })}
-              {NODES.slice(1).map((_, idx) => {
-                const i = idx + 1;
-                const p = pt(i);
-                return <Circle key={`n${i}`} cx={p.x} cy={p.y} r={Math.max(2, 5 - i * 0.5)} fill="#fff" opacity={Math.max(0.18, 0.7 - i * 0.12)} />;
-              })}
-              <Circle cx={hero.x} cy={hero.y} r={LOCKET / 2 + 3} fill="none" stroke={colors.gold} strokeWidth={2} opacity={0.5} />
-            </Svg>
-
-            <Glow size={LOCKET * 2.1} color={colors.gold} opacity={0.45} style={{ position: "absolute", left: hero.x - LOCKET * 1.05, top: hero.y - LOCKET * 1.05 }} />
-            <View style={[styles.locket, { left: hero.x - LOCKET / 2, top: hero.y - LOCKET / 2 }]}>
-              {avatar ? <Image source={avatar} style={styles.locketImg} resizeMode="contain" /> : null}
-            </View>
-            <View style={[styles.youPill, { left: hero.x - 52, top: hero.y + LOCKET / 2 + 8 }]}>
-              <Text style={styles.youText}>DU BIST HIER</Text>
-            </View>
-          </>
-        ) : null}
+    <View style={{ flex: 1 }}>
+      <View style={styles.header}>
+        <Overline color={colors.textDim}>Dein Sternbild</Overline>
+        <Text style={styles.realm}>Aldoria</Text>
+        <Text style={styles.caption}>✦ …die Reise geht weiter</Text>
       </View>
 
-      <GlassCard style={styles.epCard} contentStyle={{ padding: 0 }}>
+      <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ height: contentH }} showsVerticalScrollIndicator={false}>
+        {/* trail + faint upcoming stars */}
+        <Svg width={width} height={contentH} style={StyleSheet.absoluteFill} pointerEvents="none">
+          {Array.from({ length: pointCount - 1 }, (_, p) => {
+            const reached = p + 1 <= furthest;
+            return (
+              <Line
+                key={`l${p}`}
+                x1={px(p)}
+                y1={py(p)}
+                x2={px(p + 1)}
+                y2={py(p + 1)}
+                stroke={colors.gold}
+                strokeWidth={reached ? 3 : 2}
+                strokeDasharray={reached ? undefined : "2 9"}
+                strokeLinecap="round"
+                opacity={reached ? 0.9 : Math.max(0.12, 0.5 - (p - furthest) * 0.12)}
+              />
+            );
+          })}
+          {Array.from({ length: FUTURE }, (_, i) => {
+            const p = episodes.length + i;
+            return <Circle key={`f${p}`} cx={px(p)} cy={py(p)} r={Math.max(2, 5 - i * 1.1)} fill="#fff" opacity={Math.max(0.16, 0.55 - i * 0.14)} />;
+          })}
+        </Svg>
+
+        {/* episode star markers (tappable to select / replay) */}
+        {episodes.map((ep, p) => {
+          const reached = p <= furthest;
+          const isCurrent = p === furthest;
+          return (
+            <View key={ep.id} style={[styles.markerWrap, { left: px(p) - 48, top: py(p) - MARK / 2 }]}>
+              <Pressable
+                disabled={!reached}
+                onPress={() => setSelected(p)}
+                style={[styles.marker, isCurrent && { opacity: 0 }, !reached && styles.markerLocked, selected === p && !isCurrent && styles.markerSelected]}
+                accessibilityLabel={`Episode ${ep.episode}`}
+              >
+                <IconStar size={reached ? 22 : 18} color={reached ? colors.gold : colors.textMuted} />
+              </Pressable>
+              {!isCurrent ? <Text style={[styles.markerLabel, !reached && { color: colors.textMuted }]}>{reached ? `Episode ${ep.episode}` : "Bald"}</Text> : null}
+            </View>
+          );
+        })}
+
+        {/* hero locket — sits on the furthest star, glides up when one unlocks */}
+        <Animated.View pointerEvents="none" style={[styles.locketWrap, { transform: [{ translateX: heroLeft }, { translateY: heroTop }, { scale: heroScale }] }]}>
+          <Glow size={LOCKET * 2} color={colors.gold} opacity={0.5} style={{ position: "absolute", left: -LOCKET / 2, top: -LOCKET / 2 }} />
+          <View style={styles.locket}>{avatar ? <Image source={avatar} style={styles.locketImg} resizeMode="contain" /> : null}</View>
+          <View style={styles.youPill}>
+            <Text style={styles.youText}>DU BIST HIER</Text>
+          </View>
+        </Animated.View>
+      </ScrollView>
+
+      {/* pinned episode card for the selected star */}
+      <GlassCard style={styles.card} contentStyle={{ padding: 0 }}>
         <View style={styles.epRow}>
           {cover ? <Image source={cover} style={styles.epThumb} resizeMode="cover" /> : null}
           <View style={{ flex: 1, justifyContent: "center" }}>
-            <Overline>Episode {ep.episode}</Overline>
+            <Overline>Episode {selEp.episode}</Overline>
             <Text style={styles.epTitle} numberOfLines={2}>
-              {ep.title}
+              {selEp.title}
             </Text>
             <View style={styles.progRow}>
-              <Text style={styles.progLabel}>{progress ? `Szene ${sceneNo} von ${total}` : "Noch nicht begonnen"}</Text>
-              {progress ? <Text style={styles.progPct}>{pct}%</Text> : null}
+              <Text style={styles.progLabel}>{statusLabel}</Text>
+              {selIsCompleted || inProgress ? <Text style={styles.progPct}>{pct}%</Text> : null}
             </View>
             <View style={styles.track}>
               <View style={[styles.fill, { width: `${pct}%`, backgroundColor: colors.gold }]} />
             </View>
           </View>
         </View>
-        <Btn title={progress ? "Weiterreisen ✦" : "Reise beginnen ✦"} kind="gold" onPress={onPlay} style={{ margin: space.md, marginTop: space.sm }} />
+        <Btn title={ctaLabel} kind="gold" onPress={playSelected} style={{ margin: space.md, marginTop: space.sm }} />
       </GlassCard>
     </View>
   );
@@ -171,7 +248,6 @@ function HeldTab() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.h1}>Held</Text>
 
-        {/* glowing halo portrait */}
         <View style={styles.haloWrap}>
           <Animated.View style={{ position: "absolute", opacity: haloOpacity, transform: [{ scale: haloScale }] }}>
             <Glow size={HALO * 1.7} color={colors.gold} opacity={0.7} />
@@ -192,7 +268,6 @@ function HeldTab() {
           <Text style={styles.levelPillText}>STUFE {character.level}</Text>
         </View>
 
-        {/* stat orbs */}
         <View style={styles.statsRow}>
           {statOrder.map((s) => {
             const isPrimary = s === def.primary;
@@ -208,18 +283,18 @@ function HeldTab() {
           })}
         </View>
 
-        {/* HP + XP */}
         <View style={styles.hpXpRow}>
           <Text style={styles.hpText}>❤️ {character.maxHp} HP</Text>
           <View style={{ flex: 1, marginLeft: space.md }}>
-            <Text style={styles.xpLabel}>EP bis Stufe {character.level + 1} · {character.xp}/3</Text>
+            <Text style={styles.xpLabel}>
+              EP bis Stufe {character.level + 1} · {character.xp}/3
+            </Text>
             <View style={styles.track}>
               <View style={[styles.fill, { width: `${xpPct}%`, backgroundColor: colors.violetLight }]} />
             </View>
           </View>
         </View>
 
-        {/* Sternen-Beutel (relic slots) */}
         <Overline style={{ marginTop: space.lg, marginBottom: space.sm }}>Sternen-Beutel</Overline>
         <View style={styles.relGrid}>
           {Array.from({ length: slotCount }, (_, i) => {
@@ -243,7 +318,9 @@ function HeldTab() {
         <Pressable style={styles.overlay} onPress={() => setDetailId(null)}>
           <Glow size={300} color={colors.gold} opacity={0.4} style={{ position: "absolute" }} />
           <GlassCard strong style={{ width: "100%", maxWidth: 340 }} contentStyle={{ alignItems: "center", padding: space.lg }}>
-            <View style={styles.cardImgBox}>{itemImage(ep, detailId!) ? <Image source={itemImage(ep, detailId!)} style={styles.relImg} resizeMode="contain" /> : null}</View>
+            <View style={styles.cardImgBox}>
+              {itemImage(ep, detailId!) ? <Image source={itemImage(ep, detailId!)} style={styles.relImg} resizeMode="contain" /> : null}
+            </View>
             <Text style={styles.cardName}>{detail.name}</Text>
             {detail.bonus ? <Text style={styles.cardBonus}>✨ {detail.bonus}</Text> : null}
             {detail.desc ? <Text style={styles.cardDesc}>{detail.desc}</Text> : null}
@@ -262,17 +339,24 @@ const styles = StyleSheet.create({
   h1: { color: colors.gold, fontSize: 24, fontFamily: font.displayBold, letterSpacing: 0.5, marginBottom: space.md, alignSelf: "flex-start" },
 
   // Reise / constellation
-  reise: { flex: 1, paddingHorizontal: space.lg, paddingTop: space.lg },
+  header: { alignItems: "center", paddingTop: space.lg, paddingBottom: space.sm },
   realm: { color: colors.textBright, fontSize: 28, fontFamily: font.displayBold, textAlign: "center", textShadowColor: "rgba(255,212,121,0.55)", textShadowRadius: 14 },
-  caption: { color: colors.textDim, fontSize: 13, fontFamily: font.body, textAlign: "center", marginTop: 2, marginBottom: space.sm },
-  sky: { flex: 1, marginVertical: space.sm },
-  locket: { position: "absolute", width: LOCKET, height: LOCKET, borderRadius: LOCKET / 2, backgroundColor: "#11122c", borderWidth: 2, borderColor: colors.gold, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  caption: { color: colors.textDim, fontSize: 13, fontFamily: font.body, textAlign: "center", marginTop: 2 },
+
+  markerWrap: { position: "absolute", width: 96, alignItems: "center" },
+  marker: { width: MARK, height: MARK, borderRadius: MARK / 2, alignItems: "center", justifyContent: "center", backgroundColor: colors.glassFill, borderWidth: 1, borderColor: colors.glassBorder },
+  markerSelected: { borderColor: colors.gold, borderWidth: 2, backgroundColor: "rgba(255,212,121,0.16)" },
+  markerLocked: { opacity: 0.45, borderStyle: "dashed" },
+  markerLabel: { color: colors.textDim, fontSize: 11, fontFamily: font.bodyBold, letterSpacing: 0.5, marginTop: 5 },
+
+  locketWrap: { position: "absolute", left: 0, top: 0, width: LOCKET, height: LOCKET },
+  locket: { width: LOCKET, height: LOCKET, borderRadius: LOCKET / 2, backgroundColor: "#11122c", borderWidth: 2, borderColor: colors.gold, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   locketImg: { width: "108%", height: "108%", marginTop: 6 },
-  youPill: { position: "absolute", width: 104, alignItems: "center", paddingVertical: 4, borderRadius: radius.pill, backgroundColor: "rgba(255,212,121,0.18)", borderWidth: 1, borderColor: colors.gold },
+  youPill: { position: "absolute", top: LOCKET + 6, width: 104, left: (LOCKET - 104) / 2, alignItems: "center", paddingVertical: 4, borderRadius: radius.pill, backgroundColor: "rgba(255,212,121,0.18)", borderWidth: 1, borderColor: colors.gold },
   youText: { color: colors.gold, fontSize: 10, fontFamily: font.bodyBold, letterSpacing: 1.5 },
 
-  // episode card
-  epCard: { marginBottom: space.sm },
+  // episode card (pinned)
+  card: { position: "absolute", left: space.lg, right: space.lg, bottom: space.md },
   epRow: { flexDirection: "row", gap: space.md, padding: space.md, paddingBottom: 0 },
   epThumb: { width: 64, height: 64, borderRadius: radius.md },
   epTitle: { color: colors.textBright, fontSize: 18, fontFamily: font.displayBold, marginTop: 2 },
@@ -318,7 +402,6 @@ const styles = StyleSheet.create({
   resetLink: { marginTop: space.xl, alignSelf: "center", padding: space.sm },
   resetText: { color: colors.textMuted, fontSize: 13, fontFamily: font.body, textDecorationLine: "underline" },
 
-  // relic detail modal
   overlay: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: "rgba(8,10,32,0.7)", alignItems: "center", justifyContent: "center", padding: space.lg },
   cardImgBox: { width: 140, height: 140, borderRadius: radius.md, alignItems: "center", justifyContent: "center", padding: space.sm, backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: colors.glassBorder },
   cardName: { color: colors.textBright, fontSize: 22, fontFamily: font.displayBold, marginTop: space.md, textAlign: "center" },

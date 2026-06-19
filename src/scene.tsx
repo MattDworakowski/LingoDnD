@@ -14,7 +14,6 @@ import {
   getEpisode,
   itemDef,
   itemImage,
-  nextEpisodeId,
   sceneAudio,
   sceneText,
   Scene,
@@ -142,11 +141,10 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
     if (correct && game.addXp(then.xp)) setLevelUp(true);
     go(then.next);
   }
-  // On finishing an episode (its ending scene), unlock the next one by moving
-  // progress to its start, so "Weiterreisen" continues the campaign.
+  // On finishing an episode (its ending scene), mark it completed — that unlocks
+  // the next star on the Sternenreise and moves the hero up to it.
   function completeEpisode() {
-    const nid = nextEpisodeId(ep.id);
-    if (nid) game.setProgress({ episodeId: nid, sceneId: getEpisode(nid).startScene });
+    game.markCompleted(ep.id);
   }
 
   return {

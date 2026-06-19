@@ -15,7 +15,7 @@ export interface Character {
   flags: Record<string, boolean>;
 }
 export interface Progress { episodeId: string; sceneId: string }
-interface SaveData { character: Character | null; progress: Progress | null }
+interface SaveData { character: Character | null; progress: Progress | null; completed: string[] }
 
 const KEY = "lingodnd:save:v1";
 const XP_PER_LEVEL = 3;
@@ -24,10 +24,12 @@ interface Ctx {
   loaded: boolean;
   character: Character | null;
   progress: Progress | null;
+  completed: string[]; // ids of episodes finished (reached their ending)
   createCharacter: (gender: Gender, classId: ClassId) => void;
   addXp: (n: number) => boolean; // true if the character leveled up
   grantItem: (id: string) => void;
   setProgress: (p: Progress | null) => void;
+  markCompleted: (episodeId: string) => void;
   resetAll: () => void;
 }
 
@@ -42,6 +44,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const [character, setCharacter] = useState<Character | null>(null);
   const [progress, setProgressState] = useState<Progress | null>(null);
+  const [completed, setCompleted] = useState<string[]>([]);
 
   useEffect(() => {
     AsyncStorage.getItem(KEY).then((raw) => {
@@ -50,6 +53,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           const d: SaveData = JSON.parse(raw);
           setCharacter(d.character);
           setProgressState(d.progress);
+          setCompleted(d.completed ?? []);
         } catch {
           /* corrupt save — start fresh */
         }
@@ -58,8 +62,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  function persist(char: Character | null, prog: Progress | null) {
-    AsyncStorage.setItem(KEY, JSON.stringify({ character: char, progress: prog }));
+  function persist(char: Character | null, prog: Progress | null, comp: string[]) {
+    AsyncStorage.setItem(KEY, JSON.stringify({ character: char, progress: prog, completed: comp }));
   }
 
   function createCharacter(gender: Gender, classId: ClassId) {
@@ -76,7 +80,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     };
     setCharacter(char);
     setProgressState(null);
-    persist(char, null);
+    setCompleted([]);
+    persist(char, null, []);
   }
 
   function addXp(n: number): boolean {
@@ -94,7 +99,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
     const updated: Character = { ...character, xp, level, stats };
     setCharacter(updated);
-    persist(updated, progress);
+    persist(updated, progress, completed);
     return leveled;
   }
 
@@ -102,23 +107,32 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (!character || character.items.includes(id)) return;
     const updated: Character = { ...character, items: [...character.items, id] };
     setCharacter(updated);
-    persist(updated, progress);
+    persist(updated, progress, completed);
   }
 
   function setProgress(p: Progress | null) {
     setProgressState(p);
-    persist(character, p);
+    persist(character, p, completed);
+  }
+
+  // Mark an episode finished (unlocks the next one on the Sternenreise).
+  function markCompleted(episodeId: string) {
+    if (completed.includes(episodeId)) return;
+    const c = [...completed, episodeId];
+    setCompleted(c);
+    persist(character, progress, c);
   }
 
   function resetAll() {
     setCharacter(null);
     setProgressState(null);
+    setCompleted([]);
     AsyncStorage.removeItem(KEY);
   }
 
   return (
     <GameContext.Provider
-      value={{ loaded, character, progress, createCharacter, addXp, grantItem, setProgress, resetAll }}
+      value={{ loaded, character, progress, completed, createCharacter, addXp, grantItem, setProgress, markCompleted, resetAll }}
     >
       {children}
     </GameContext.Provider>

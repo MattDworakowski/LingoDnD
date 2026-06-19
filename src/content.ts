@@ -75,6 +75,21 @@ export function nextEpisodeId(id: string): string | null {
   return i >= 0 && i + 1 < all.length ? all[i + 1].id : null;
 }
 
+// How far up the Sternenreise the hero has reached: the highest episode index
+// that is unlocked. Episode i unlocks once episode i-1 is completed (a linear
+// campaign); also treat the active `progress` episode as reached (covers older
+// saves made before `completed` was tracked).
+export function furthestEpisodeIndex(completed: string[], progressEpId?: string | null): number {
+  const all = episodesInOrder();
+  let furthest = 0;
+  for (let i = 1; i < all.length; i++) {
+    if (completed.includes(all[i - 1].id)) furthest = i;
+    else break;
+  }
+  const progIdx = progressEpId ? all.findIndex((e) => e.id === progressEpId) : -1;
+  return Math.max(furthest, progIdx, 0);
+}
+
 export const CLASS_IDS: ClassId[] = ["krieger", "magier", "barde"];
 export const GENDER_LABELS: Record<Gender, string> = { junge: "Junge", maedchen: "Mädchen" };
 export const STAT_LABELS: Record<StatId, string> = { staerke: "Stärke", magie: "Magie", charisma: "Charisma" };
