@@ -24,7 +24,7 @@ const USE_MAP = true;
 type Screen = "home" | "play";
 
 function Root() {
-  const { loaded, character } = useGame();
+  const { loaded, character, lang } = useGame();
   const [screen, setScreen] = useState<Screen>("home");
   const [fontsLoaded] = useFonts({
     Quicksand_500Medium,
@@ -53,7 +53,8 @@ function Root() {
   if (!character) content = <CreateScreen />;
   else if (screen === "play") {
     const Play = USE_MAP ? MapPlayScreen : PlayScreen;
-    content = <Play onExit={() => setScreen("home")} />;
+    // key on lang so switching language remounts the runner (fresh audio/text).
+    content = <Play key={lang} onExit={() => setScreen("home")} />;
   } else content = <HomeScreen onPlay={() => setScreen("play")} />;
 
   return <SkyBackground episode={screen === "play"}>{content}</SkyBackground>;

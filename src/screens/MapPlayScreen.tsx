@@ -16,8 +16,9 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import Svg, { Circle, Defs, Line, RadialGradient, Rect, Stop } from "react-native-svg";
-import { avatarImage, mapImage, MapNode, spineNodes } from "../content";
+import { avatarImage, loc, mapImage, MapNode, spineNodes } from "../content";
 import { useEpisodeRunner, SceneInteraction, LevelUpBanner, ItemFoundBanner } from "../scene";
+import { useLang, useT } from "../i18n";
 import { Glow, Overline } from "../nightshade";
 import { colors, font, radius, space } from "../theme";
 import { Btn } from "../ui";
@@ -30,6 +31,8 @@ const Z_REST = 1.0; // zoom when resting at a node
 const Z_TRAVEL = 0.78; // pulled-back zoom while walking, to show the journey
 
 export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
+  const t = useT();
+  const lang = useLang();
   const { width, height } = useWindowDimensions();
   const [modalOpen, setModalOpen] = useState(false);
   const [traveling, setTraveling] = useState(false);
@@ -204,17 +207,17 @@ export default function MapPlayScreen({ onExit }: { onExit: () => void }) {
 
       <SafeAreaView style={styles.topBar} pointerEvents="box-none">
         <Pressable onPress={onExit} hitSlop={12}>
-          <Text style={styles.back}>‹ Reise</Text>
+          <Text style={styles.back}>{t.backJourney}</Text>
         </Pressable>
         <Text style={styles.title} numberOfLines={1}>
-          {ep.title}
+          {loc(ep.title, lang)}
         </Text>
         <View style={{ width: 60 }} />
       </SafeAreaView>
 
       {!modalOpen && !traveling ? (
         <View style={styles.cta} pointerEvents="box-none">
-          <Btn title={atStart ? "Los geht's ✦" : "Weiterreisen ✦"} kind="gold" onPress={() => setModalOpen(true)} />
+          <Btn title={atStart ? t.ctaStart : t.ctaTravelOn} kind="gold" onPress={() => setModalOpen(true)} />
         </View>
       ) : null}
 
@@ -257,6 +260,7 @@ function MapWash({ w, h, hx, hy }: { w: number; h: number; hx: number; hy: numbe
 
 /* ---------------------------------------------------- scene tray over the map */
 function SceneModal({ runner, onExit }: { runner: ReturnType<typeof useEpisodeRunner>; onExit: () => void }) {
+  const t = useT();
   const [showText, setShowText] = useState(false);
   const { text, anchor, revealNow } = runner;
   const slide = useRef(new Animated.Value(0)).current;
@@ -283,7 +287,7 @@ function SceneModal({ runner, onExit }: { runner: ReturnType<typeof useEpisodeRu
           ) : null}
           {showText ? (
             <View style={styles.textPanel}>
-              <Overline style={{ marginBottom: 6 }}>✦ Die Geschichte</Overline>
+              <Overline style={{ marginBottom: 6 }}>{t.theStory}</Overline>
               <Text style={styles.narration}>{text}</Text>
             </View>
           ) : null}

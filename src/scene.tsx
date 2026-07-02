@@ -14,12 +14,14 @@ import {
   getEpisode,
   itemDef,
   itemImage,
+  loc,
   sceneAudio,
   sceneText,
   Scene,
   Then,
 } from "./content";
 import { Character, useGame } from "./state";
+import { useLang, useT } from "./i18n";
 import { Equalizer, GemD20, Glow, IconPause, IconPlay, IconReplay, IconSkip, Overline, StarPip } from "./nightshade";
 import { colors, font, glassShadow, radius, space } from "./theme";
 import { Btn, IconButton } from "./ui";
@@ -73,7 +75,7 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
     setPaused(false);
     release();
     if (!active) return;
-    const src = sceneAudio(ep.id, scene, character.classId);
+    const src = sceneAudio(ep.id, scene, character.classId, game.lang);
     if (!src) {
       setAudioDone(true);
       return;
@@ -102,7 +104,7 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
       release();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sceneId, active]);
+  }, [sceneId, active, game.lang]);
 
   function release() {
     const p = playerRef.current;
@@ -152,7 +154,7 @@ export function useEpisodeRunner({ active = true }: { active?: boolean } = {}) {
     character,
     scene,
     sceneId,
-    text: sceneText(scene, character.classId),
+    text: sceneText(scene, character.classId, game.lang),
     anchor: anchorImage(ep, scene.anchor),
     revealNow: ep.revealImages === "onStart" || audioDone,
     audioDone,
@@ -174,21 +176,22 @@ export type EpisodeRunner = ReturnType<typeof useEpisodeRunner>;
 /* ------------------------------------------------------- scene interaction */
 // While audio plays: a frosted audio dock (equalizer + pause/replay/skip). After: the scene's `then` action.
 export function SceneInteraction({ runner, onExit }: { runner: EpisodeRunner; onExit: () => void }) {
+  const t = useT();
   if (!runner.audioDone) {
     return (
       <View style={styles.audioDock}>
         <View style={styles.dockNow}>
           <Equalizer />
-          <Text style={styles.dockLabel}>wird vorgelesen…</Text>
+          <Text style={styles.dockLabel}>{t.readingAloud}</Text>
         </View>
         <View style={styles.playingRow}>
-          <IconButton kind="wood" size={56} onPress={runner.togglePause} accessibilityLabel={runner.paused ? "Weiter abspielen" : "Pause"}>
+          <IconButton kind="wood" size={56} onPress={runner.togglePause} accessibilityLabel={runner.paused ? t.a11yResume : t.a11yPause}>
             {runner.paused ? <IconPlay size={24} color={colors.text} /> : <IconPause size={24} color={colors.text} />}
           </IconButton>
-          <IconButton kind="wood" size={56} onPress={runner.replay} accessibilityLabel="Nochmal anhören">
+          <IconButton kind="wood" size={56} onPress={runner.replay} accessibilityLabel={t.a11yReplay}>
             <IconReplay size={24} color={colors.text} />
           </IconButton>
-          <IconButton kind="gold" size={56} onPress={() => runner.setAudioDone(true)} accessibilityLabel="Überspringen">
+          <IconButton kind="gold" size={56} onPress={() => runner.setAudioDone(true)} accessibilityLabel={t.a11ySkip}>
             <IconSkip size={24} color={colors.inkOnGold} />
           </IconButton>
         </View>
@@ -211,15 +214,16 @@ function SceneActions(props: {
   onExit: () => void;
   replay: () => void;
 }) {
+  const t = useT();
   const then = props.scene.then;
   switch (then.type) {
     case "next":
       return (
         <View style={styles.iconRow}>
-          <IconButton kind="wood" onPress={props.replay} accessibilityLabel="Nochmal hören">
+          <IconButton kind="wood" onPress={props.replay} accessibilityLabel={t.a11yListen}>
             <IconReplay size={26} color={colors.text} />
           </IconButton>
-          <IconButton kind="gold" size={74} onPress={() => props.onGo(then.next)} accessibilityLabel="Weiter">
+          <IconButton kind="gold" size={74} onPress={() => props.onGo(then.next)} accessibilityLabel={t.a11yNext}>
             <IconPlay size={34} />
           </IconButton>
         </View>
@@ -247,6 +251,7 @@ function SceneActions(props: {
 // Shared d20: tap the number from your real die, or roll digitally. Mounted fresh
 // for each roll (skill checks and every combat round), so its state self-resets.
 function DiceRoller({ onRoll }: { onRoll: (n: number) => void }) {
+  const t = useT();
   const [shown, setShown] = useState<number | null>(null);
   const [rolling, setRolling] = useState(false);
 
@@ -281,16 +286,18 @@ function DiceRoller({ onRoll }: { onRoll: (n: number) => void }) {
           </Pressable>
         ))}
       </View>
-      <Btn title="✦ Sterne würfeln" kind="primary" onPress={digital} disabled={rolling || shown !== null} style={{ marginTop: space.sm }} />
+      <Btn title={t.rollStars} kind="primary" onPress={digital} disabled={rolling || shown !== null} style={{ marginTop: space.sm }} />
     </View>
   );
 }
 
 function DiceView({ then, onRoll }: { then: SkillThen; onRoll: (n: number) => void }) {
+  const t = useT();
+  const lang = useLang();
   return (
     <View style={styles.center}>
-      <Text style={styles.prompt}>{then.prompt}</Text>
-      <Text style={styles.hint}>Würfle hoch – hohe Zahlen sind gut!</Text>
+      <Text style={styles.prompt}>{loc(then.prompt, lang)}</Text>
+      <Text style={styles.hint}>{t.rollHigh}</Text>
       <DiceRoller onRoll={onRoll} />
     </View>
   );
@@ -298,6 +305,8 @@ function DiceView({ then, onRoll }: { then: SkillThen; onRoll: (n: number) => vo
 
 /* --------------------------------------------------------------- minigame */
 function MiniGameView({ then, onDone }: { then: MiniThen; onDone: (correct: boolean) => void }) {
+  const t = useT();
+  const lang = useLang();
   const [picked, setPicked] = useState<number | null>(null);
   function pick(i: number) {
     if (picked !== null) return;
@@ -306,8 +315,8 @@ function MiniGameView({ then, onDone }: { then: MiniThen; onDone: (correct: bool
   }
   return (
     <View style={styles.center}>
-      <Overline style={{ marginBottom: 4 }}>✦ Sternenfrage</Overline>
-      <Text style={styles.prompt}>{then.question}</Text>
+      <Overline style={{ marginBottom: 4 }}>{t.starQuestion}</Overline>
+      <Text style={styles.prompt}>{loc(then.question, lang)}</Text>
       <View style={{ width: "100%", gap: space.sm, marginTop: space.md }}>
         {then.options.map((opt, i) => {
           const isAnswer = i === then.correct;
@@ -321,15 +330,15 @@ function MiniGameView({ then, onDone }: { then: MiniThen; onDone: (correct: bool
               style={[styles.optBtn, correct && styles.optCorrect, wrong && styles.optWrong]}
             >
               <View style={[styles.optDot, { backgroundColor: DOT_COLORS[i % DOT_COLORS.length] }]} />
-              <Text style={styles.optText}>{opt}</Text>
+              <Text style={styles.optText}>{loc(opt, lang)}</Text>
             </Pressable>
           );
         })}
       </View>
       {picked !== null ? (
-        <Text style={styles.feedback}>{picked === then.correct ? "Richtig! +1 EP ✦" : "Schau beim nächsten Mal genau hin."}</Text>
+        <Text style={styles.feedback}>{picked === then.correct ? t.correctFeedback : t.wrongFeedback}</Text>
       ) : (
-        <Text style={styles.hint}>Tippe die richtige Antwort an</Text>
+        <Text style={styles.hint}>{t.tapAnswer}</Text>
       )}
     </View>
   );
@@ -341,13 +350,16 @@ function MiniGameView({ then, onDone }: { then: MiniThen; onDone: (correct: bool
 // damage) → repeat until it's down. No Game Over (rescue at 0 HP). Specials:
 // Magier Feuerball (instant), Barde Reden (its own roll to skip the fight).
 function CombatView({ then, character, onResolve }: { then: CombatThen; character: Character; onResolve: (id: string) => void }) {
+  const t = useT();
+  const lang = useLang();
   const primary = characters.classes[character.classId].primary;
   const bonus = character.stats[primary];
   const enemy = then.enemy;
+  const enemyName = loc(enemy.name, lang);
   const [enemyHp, setEnemyHp] = useState(enemy.hp);
   const [playerHp, setPlayerHp] = useState(character.maxHp);
   const [phase, setPhase] = useState<"action" | "talk" | "resolving" | "over">("action");
-  const [msg, setMsg] = useState(`Ein ${enemy.name} versperrt den Weg!`);
+  const [msg, setMsg] = useState(t.combatIntro(enemyName));
   const [talkUsed, setTalkUsed] = useState(false);
   const [magicUsed, setMagicUsed] = useState(false);
 
@@ -364,10 +376,10 @@ function CombatView({ then, character, onResolve }: { then: CombatThen; characte
   }
   function settle(enemyNow: number, playerNow: number) {
     if (enemyNow <= 0) {
-      setMsg(`Du hast den ${enemy.name} besiegt! 🎉`);
+      setMsg(t.combatDefeated(enemyName));
       setPhase("over");
     } else if (playerNow <= 0) {
-      setMsg(`Du gehst zu Boden … aber ein Freund hilft dir wieder auf. Du kommst trotzdem weiter.`);
+      setMsg(t.combatDown);
       setPhase("over");
     } else {
       setPhase("action");
@@ -391,7 +403,7 @@ function CombatView({ then, character, onResolve }: { then: CombatThen; characte
       return;
     }
     setTimeout(() => {
-      setMsg(`Der ${enemy.name} schlägt zurück: −${enemy.damage} HP!`);
+      setMsg(t.combatStrikesBack(enemyName, enemy.damage));
       animatePlayerHp(pHp);
     }, 1300);
     setTimeout(() => settle(eHp, pHp), 2400);
@@ -400,16 +412,16 @@ function CombatView({ then, character, onResolve }: { then: CombatThen; characte
   function doAttack(roll: number) {
     const total = roll + bonus;
     if (total >= enemy.hitTarget) {
-      resolveRound(then.playerHitDamage, `${roll} + ${bonus} = ${total} ≥ ${enemy.hitTarget} → Treffer! Der ${enemy.name} verliert ${then.playerHitDamage} HP.`);
+      resolveRound(then.playerHitDamage, t.combatHit(roll, bonus, total, enemy.hitTarget, enemyName, then.playerHitDamage));
     } else {
-      resolveRound(0, `${roll} + ${bonus} = ${total} < ${enemy.hitTarget} → daneben!`);
+      resolveRound(0, t.combatMiss(roll, bonus, total, enemy.hitTarget));
     }
   }
 
   function fireball() {
     if (phase !== "action" || magicUsed) return;
     setMagicUsed(true);
-    resolveRound(5, `🔥 Feuerball! Der ${enemy.name} verliert 5 HP.`);
+    resolveRound(5, t.combatFireball(enemyName));
   }
 
   function doTalk(roll: number) {
@@ -417,23 +429,23 @@ function CombatView({ then, character, onResolve }: { then: CombatThen; characte
     setPhase("resolving");
     const total = roll + character.stats.charisma;
     if (total >= then.talkOut.target) {
-      setMsg(`${roll} + ${character.stats.charisma} = ${total} ≥ ${then.talkOut.target} → Du redest dich geschickt vorbei!`);
+      setMsg(t.talkWin(roll, character.stats.charisma, total, then.talkOut.target));
       setTimeout(() => onResolve(then.talkOut!.next), 1500);
     } else {
       setTalkUsed(true);
-      setMsg(`${roll} + ${character.stats.charisma} = ${total} → der ${enemy.name} lacht nur. Jetzt hilft nur Kämpfen!`);
+      setMsg(t.talkFail(roll, character.stats.charisma, total, enemyName));
       setTimeout(() => setPhase("action"), 1500);
     }
   }
 
   return (
     <View style={styles.center}>
-      <HpPips label={enemy.name} hp={enemyHp} max={enemy.hp} color={colors.pink} />
-      <HpPips label="Du" hp={playerHp} max={character.maxHp} color={colors.teal} />
+      <HpPips label={enemyName} hp={enemyHp} max={enemy.hp} color={colors.pink} />
+      <HpPips label={t.you} hp={playerHp} max={character.maxHp} color={colors.teal} />
       <Text style={styles.combatMsg}>{msg}</Text>
 
       {phase === "over" ? (
-        <IconButton kind="gold" size={74} onPress={() => onResolve(then.winNext)} accessibilityLabel="Weiter" style={{ marginTop: space.sm }}>
+        <IconButton kind="gold" size={74} onPress={() => onResolve(then.winNext)} accessibilityLabel={t.a11yNext} style={{ marginTop: space.sm }}>
           <IconPlay size={34} />
         </IconButton>
       ) : null}
@@ -442,18 +454,18 @@ function CombatView({ then, character, onResolve }: { then: CombatThen; characte
         <>
           {canMagic || canTalk ? (
             <View style={styles.specialRow}>
-              {canMagic ? <Btn title="🔥 Feuerball" kind="danger" onPress={fireball} /> : null}
-              {canTalk ? <Btn title="💬 Reden" kind="ghost" onPress={() => setPhase("talk")} /> : null}
+              {canMagic ? <Btn title={t.fireball} kind="danger" onPress={fireball} /> : null}
+              {canTalk ? <Btn title={t.talkAction} kind="ghost" onPress={() => setPhase("talk")} /> : null}
             </View>
           ) : null}
-          <Text style={styles.hint}>Würfle für deinen Angriff:</Text>
+          <Text style={styles.hint}>{t.attackPrompt}</Text>
           <DiceRoller onRoll={doAttack} />
         </>
       ) : null}
 
       {phase === "talk" ? (
         <>
-          <Text style={styles.hint}>Würfle, um dich vorbeizureden:</Text>
+          <Text style={styles.hint}>{t.talkPrompt}</Text>
           <DiceRoller onRoll={doTalk} />
         </>
       ) : null}
@@ -480,11 +492,12 @@ function HpPips({ label, hp, max, color }: { label: string; hp: number; max: num
 
 /* ----------------------------------------------------------------- ending */
 function EndingView({ onExit }: { onExit: () => void }) {
+  const t = useT();
   return (
     <View style={styles.center}>
       <Text style={styles.star}>⭐</Text>
-      <Text style={styles.endTitle}>Fortsetzung folgt!</Text>
-      <Btn title="Zur Reise" kind="gold" onPress={onExit} style={{ marginTop: space.md }} />
+      <Text style={styles.endTitle}>{t.toBeContinued}</Text>
+      <Btn title={t.toJourney} kind="gold" onPress={onExit} style={{ marginTop: space.md }} />
     </View>
   );
 }
@@ -500,14 +513,15 @@ function BannerCard({ children }: { children: React.ReactNode }) {
 }
 
 export function LevelUpBanner({ level, onClose }: { level: number; onClose: () => void }) {
+  const t = useT();
   return (
     <Pressable style={styles.overlay} onPress={onClose}>
       <Glow size={320} color={colors.gold} opacity={0.5} style={{ position: "absolute" }} />
       <BannerCard>
         <Text style={styles.star}>✨</Text>
-        <Text style={styles.endTitle}>Stufe {level}!</Text>
-        <Text style={styles.levelText}>Deine Hauptkraft ist gewachsen.</Text>
-        <Text style={styles.levelTap}>(zum Schließen tippen)</Text>
+        <Text style={styles.endTitle}>{t.levelUpTitle(level)}</Text>
+        <Text style={styles.levelText}>{t.mainPowerGrew}</Text>
+        <Text style={styles.levelTap}>{t.tapToClose}</Text>
       </BannerCard>
     </Pressable>
   );
@@ -515,19 +529,21 @@ export function LevelUpBanner({ level, onClose }: { level: number; onClose: () =
 
 // Celebratory popup when an item is picked up (see grantItem in the runner).
 export function ItemFoundBanner({ ep, itemId, onClose }: { ep: Episode; itemId: string; onClose: () => void }) {
+  const t = useT();
+  const lang = useLang();
   const def = itemDef(ep, itemId);
   const img = itemImage(ep, itemId);
   return (
     <Pressable style={styles.overlay} onPress={onClose}>
       <Glow size={320} color={colors.gold} opacity={0.5} style={{ position: "absolute" }} />
       <BannerCard>
-        <Text style={styles.foundLabel}>✦ Gefunden!</Text>
+        <Text style={styles.foundLabel}>{t.found}</Text>
         <View style={styles.foundImgBox}>
           <Glow size={150} color={colors.gold} opacity={0.4} style={{ position: "absolute" }} />
           {img ? <Image source={img} style={styles.foundImg} resizeMode="contain" /> : null}
         </View>
-        <Text style={styles.endTitle}>{def?.name ?? itemId}</Text>
-        <Text style={styles.levelTap}>(zum Schließen tippen)</Text>
+        <Text style={styles.endTitle}>{def ? loc(def.name, lang) : itemId}</Text>
+        <Text style={styles.levelTap}>{t.tapToClose}</Text>
       </BannerCard>
     </Pressable>
   );

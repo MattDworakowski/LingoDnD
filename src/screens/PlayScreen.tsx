@@ -3,10 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useEpisodeRunner, SceneInteraction, LevelUpBanner, ItemFoundBanner } from "../scene";
+import { useT } from "../i18n";
 import { Glow, Overline } from "../nightshade";
 import { colors, font, radius, space } from "../theme";
 
 export default function PlayScreen({ onExit }: { onExit: () => void }) {
+  const t = useT();
   const runner = useEpisodeRunner();
   const { ep, text, anchor, revealNow, character, levelUp, setLevelUp } = runner;
 
@@ -23,7 +25,7 @@ export default function PlayScreen({ onExit }: { onExit: () => void }) {
     <SafeAreaView style={styles.safe}>
       <View style={styles.topBar}>
         <Pressable onPress={onExit} hitSlop={12}>
-          <Text style={styles.topIcon}>‹ Reise</Text>
+          <Text style={styles.topIcon}>{t.backJourney}</Text>
         </Pressable>
         <Pressable onPress={() => setShowText((v) => !v)} hitSlop={12}>
           <Text style={styles.topIcon}>{showText ? "✕" : "📖"}</Text>
@@ -39,7 +41,7 @@ export default function PlayScreen({ onExit }: { onExit: () => void }) {
         ) : null}
         {showText ? (
           <ScrollView style={styles.textPanel} contentContainerStyle={{ padding: space.md }}>
-            <Overline style={{ marginBottom: 6 }}>✦ Die Geschichte</Overline>
+            <Overline style={{ marginBottom: 6 }}>{t.theStory}</Overline>
             <Text style={styles.narration}>{text}</Text>
           </ScrollView>
         ) : null}

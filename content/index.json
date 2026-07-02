@@ -13,6 +13,13 @@
       "episode": 2,
       "title": "Der Pfad ins Gebirge",
       "cover": "episode-02/cover.png"
+    },
+    {
+      "id": "episode-03",
+      "campaign": "sternstein",
+      "episode": 3,
+      "title": "Die Höhle der Sterne",
+      "cover": "episode-03/cover.png"
     }
   ],
   "characters": "characters.json"

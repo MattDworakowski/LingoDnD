@@ -11,8 +11,8 @@ One folder per episode: `content/<episode-id>/episode.json` + rendered media bes
   "id": "episode-01",
   "campaign": "sternstein",     // ties episodes into one campaign
   "episode": 1,
-  "title": "Der gestohlene Sternstein",
-  "language": "de",
+  "title": "Der gestohlene Sternstein", // string OR {de,en} — see Localization
+  "languages": ["de"],          // languages this episode is authored in (default ["de"])
   "startScene": "scene_1",
   "revealImages": "afterAudio", // "afterAudio" (default, comprehension reward) | "onStart"
   "mapImage": "map.png",        // overworld map for MapPlayScreen (B3); rendered from mapPrompt
@@ -22,6 +22,17 @@ One folder per episode: `content/<episode-id>/episode.json` + rendered media bes
   "scenes":  { /* id -> Scene */ }
 }
 ```
+
+## Localization (`{de,en}`)
+Any user-facing value — `title`, `narration`/`audio`, `narrationByClass` text/audio,
+mini-game `question`/`options`, skill-check `prompt`, combat `enemy.name`, item
+`name`/`desc`/`bonus` — is either a **plain string** (one language; treated as German,
+the default) or a **`{ "de": …, "en": … }` map** (bilingual). The app resolves it for the
+current language via `loc()` (falling back to `de`); ep1/ep2 are German-only strings, ep3 is
+bilingual. **`audio` filenames are localized too** so each language gets its own clip, e.g.
+`"audio": { "de": "scene_1.de.mp3", "en": "scene_1.en.mp3" }`. The render pipeline produces
+one clip per language using a per-language voice (`ELEVENLABS_VOICE_ID_DE` / `_EN`), and
+validates that a field's text and audio cover the same set of languages.
 
 ## Scene
 Every scene has spoken narration and **exactly one** `then` (what happens after the

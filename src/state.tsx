@@ -2,7 +2,7 @@
 // (no accounts, no cloud — see BRD §12/§13).
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { characters, ClassId, Gender, StatId } from "./content";
+import { characters, ClassId, Gender, Lang, StatId } from "./content";
 
 export interface Character {
   gender: Gender;
@@ -15,7 +15,7 @@ export interface Character {
   flags: Record<string, boolean>;
 }
 export interface Progress { episodeId: string; sceneId: string }
-interface SaveData { character: Character | null; progress: Progress | null; completed: string[] }
+interface SaveData { character: Character | null; progress: Progress | null; completed: string[]; lang: Lang }
 
 const KEY = "lingodnd:save:v1";
 const XP_PER_LEVEL = 3;
@@ -25,11 +25,13 @@ interface Ctx {
   character: Character | null;
   progress: Progress | null;
   completed: string[]; // ids of episodes finished (reached their ending)
+  lang: Lang; // app UI + (bilingual-episode) narration language
   createCharacter: (gender: Gender, classId: ClassId) => void;
   addXp: (n: number) => boolean; // true if the character leveled up
   grantItem: (id: string) => void;
   setProgress: (p: Progress | null) => void;
   markCompleted: (episodeId: string) => void;
+  setLang: (l: Lang) => void;
   resetAll: () => void;
 }
 
@@ -45,6 +47,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [character, setCharacter] = useState<Character | null>(null);
   const [progress, setProgressState] = useState<Progress | null>(null);
   const [completed, setCompleted] = useState<string[]>([]);
+  const [lang, setLangState] = useState<Lang>("de");
 
   useEffect(() => {
     AsyncStorage.getItem(KEY).then((raw) => {
@@ -54,6 +57,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           setCharacter(d.character);
           setProgressState(d.progress);
           setCompleted(d.completed ?? []);
+          setLangState(d.lang ?? "de");
         } catch {
           /* corrupt save — start fresh */
         }
@@ -62,8 +66,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  function persist(char: Character | null, prog: Progress | null, comp: string[]) {
-    AsyncStorage.setItem(KEY, JSON.stringify({ character: char, progress: prog, completed: comp }));
+  function persist(char: Character | null, prog: Progress | null, comp: string[], lng: Lang = lang) {
+    AsyncStorage.setItem(KEY, JSON.stringify({ character: char, progress: prog, completed: comp, lang: lng }));
   }
 
   function createCharacter(gender: Gender, classId: ClassId) {
@@ -123,16 +127,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     persist(character, progress, c);
   }
 
+  function setLang(l: Lang) {
+    setLangState(l);
+    persist(character, progress, completed, l);
+  }
+
   function resetAll() {
     setCharacter(null);
     setProgressState(null);
     setCompleted([]);
-    AsyncStorage.removeItem(KEY);
+    AsyncStorage.removeItem(KEY); // keeps the in-memory language for the rest of the session
   }
 
   return (
     <GameContext.Provider
-      value={{ loaded, character, progress, completed, createCharacter, addXp, grantItem, setProgress, markCompleted, resetAll }}
+      value={{ loaded, character, progress, completed, lang, createCharacter, addXp, grantItem, setProgress, markCompleted, setLang, resetAll }}
     >
       {children}
     </GameContext.Provider>

@@ -1,0 +1,172 @@
+{
+  "id": "episode-03",
+  "campaign": "sternstein",
+  "episode": 3,
+  "title": { "de": "Die Höhle der Sterne", "en": "The Cave of Stars" },
+  "languages": ["de", "en"],
+  "startScene": "scene_1",
+  "revealImages": "afterAudio",
+  "mapImage": "map.png",
+  "mapPrompt": "a tall vertical cross-section of a glowing blue crystal cave, a winding path from a cave entrance at the bottom up through sparkling caverns to a bright star-lit chamber at the top, gentle and magical, no characters",
+  "coverPrompt": "a young hero stepping into a glowing blue crystal cave, a small glowing moth guiding the way, wonder and warmth",
+  "anchors": {
+    "hoehle": { "prompt": "a mysterious cave entrance in a mountainside, soft blue glow coming from inside", "file": "hoehle.png" },
+    "gluehmotte": { "prompt": "a cute friendly glowing blue moth with luminous sparkling wings", "file": "gluehmotte.png" },
+    "schattenkrabbe": { "prompt": "a big round cartoon crab with gleaming claws, deep blue shell, friendly and not scary fantasy creature", "file": "schattenkrabbe.png" }
+  },
+  "items": {
+    "leuchtkristall": {
+      "name": { "de": "Leuchtkristall", "en": "Glowing Crystal" },
+      "slot": "relic",
+      "file": "leuchtkristall.png",
+      "prompt": "a glowing blue star crystal shard, softly radiant, magical",
+      "desc": { "de": "Ein Splitter eines gefallenen Sterns. Er leuchtet sanft im Dunkeln.", "en": "A shard of a fallen star. It glows softly in the dark." },
+      "bonus": { "de": "Licht in der Dunkelheit", "en": "Light in the dark" }
+    }
+  },
+  "scenes": {
+    "scene_1": {
+      "narration": {
+        "de": "Am Fuße des Berges findest du eine Höhle. Aus dem Inneren schimmert ein sanftes, blaues Licht. Eine kleine Glühmotte tanzt vor dir her, als wollte sie dir den Weg zeigen. Traust du dich hinein?",
+        "en": "At the foot of the mountain you find a cave. A soft blue light shimmers from deep inside. A little glow-moth dances ahead of you, as if it wants to show you the way. Do you dare to go in?"
+      },
+      "audio": { "de": "scene_1.de.mp3", "en": "scene_1.en.mp3" },
+      "anchor": "hoehle",
+      "map": { "x": 0.45, "y": 0.92 },
+      "then": { "type": "next", "next": "scene_2" }
+    },
+    "scene_2": {
+      "narration": {
+        "de": "Im Dunkeln hörst du ein leises Tropfen. Der Boden ist glatt und nass. Schau genau hin, wohin du trittst!",
+        "en": "In the dark you hear a soft dripping. The ground is smooth and wet. Look closely where you step!"
+      },
+      "audio": { "de": "scene_2.de.mp3", "en": "scene_2.en.mp3" },
+      "anchor": "gluehmotte",
+      "map": { "x": 0.38, "y": 0.78 },
+      "then": {
+        "type": "skillcheck",
+        "skill": "Wahrnehmung",
+        "prompt": { "de": "Würfle für Wahrnehmung – findest du den sicheren Weg?", "en": "Roll for Perception – can you find the safe path?" },
+        "branches": [
+          { "min": 1, "max": 9, "next": "scene_2b" },
+          { "min": 10, "max": 20, "next": "scene_2a" }
+        ]
+      }
+    },
+    "scene_2a": {
+      "narration": {
+        "de": "Du entdeckst flache Steine, die wie eine Treppe aus dem Wasser ragen. Trockenen Fußes gehst du tiefer in die Höhle.",
+        "en": "You spot flat stones rising from the water like a staircase. With dry feet you walk deeper into the cave."
+      },
+      "audio": { "de": "scene_2a.de.mp3", "en": "scene_2a.en.mp3" },
+      "then": { "type": "next", "next": "scene_3" }
+    },
+    "scene_2b": {
+      "narration": {
+        "de": "Du rutschst aus und landest mit dem Po im kalten Wasser. Brrr! Du lachst, stehst wieder auf und gehst weiter.",
+        "en": "You slip and land bottom-first in the cold water. Brrr! You laugh, get back up, and keep going."
+      },
+      "audio": { "de": "scene_2b.de.mp3", "en": "scene_2b.en.mp3" },
+      "then": { "type": "next", "next": "scene_3" }
+    },
+    "scene_3": {
+      "narration": {
+        "de": "Die Glühmotte setzt sich auf einen Stein und faltet ihre leuchtenden Flügel. „Wer mir folgt, findet den Stern“, flüstert eine sanfte Stimme.",
+        "en": "The glow-moth lands on a stone and folds its glowing wings. \"Whoever follows me will find the star,\" a gentle voice whispers."
+      },
+      "audio": { "de": "scene_3.de.mp3", "en": "scene_3.en.mp3" },
+      "map": { "x": 0.60, "y": 0.66 },
+      "then": {
+        "type": "minigame",
+        "kind": "comprehension",
+        "question": { "de": "Welches Tier zeigt dir den Weg?", "en": "Which animal shows you the way?" },
+        "options": [
+          { "de": "Eine Glühmotte", "en": "A glow-moth" },
+          { "de": "Ein Fuchs", "en": "A fox" },
+          { "de": "Eine Eule", "en": "An owl" }
+        ],
+        "correct": 0,
+        "xp": 1,
+        "next": "scene_4"
+      }
+    },
+    "scene_4": {
+      "narrationByClass": {
+        "krieger": {
+          "text": {
+            "de": "Ein tiefer Spalt versperrt den Weg. Du bist stark: Du schiebst einen großen Felsbrocken hinüber und baust dir eine Brücke.",
+            "en": "A deep crack blocks the way. You are strong: you push a big boulder across and build yourself a bridge."
+          },
+          "audio": { "de": "scene_4_krieger.de.mp3", "en": "scene_4_krieger.en.mp3" }
+        },
+        "magier": {
+          "text": {
+            "de": "Ein tiefer Spalt versperrt den Weg. Du sprichst einen Zauber, und ein glitzernder Steg aus Eis wächst über die Lücke.",
+            "en": "A deep crack blocks the way. You cast a spell, and a glittering bridge of ice grows across the gap."
+          },
+          "audio": { "de": "scene_4_magier.de.mp3", "en": "scene_4_magier.en.mp3" }
+        },
+        "barde": {
+          "text": {
+            "de": "Ein tiefer Spalt versperrt den Weg. Du singst ein mutiges Lied, und kleine Fledermäuse tragen dich sanft hinüber.",
+            "en": "A deep crack blocks the way. You sing a brave song, and little bats gently carry you across."
+          },
+          "audio": { "de": "scene_4_barde.de.mp3", "en": "scene_4_barde.en.mp3" }
+        }
+      },
+      "map": { "x": 0.42, "y": 0.52 },
+      "then": { "type": "next", "next": "scene_5" }
+    },
+    "scene_5": {
+      "narration": {
+        "de": "Plötzlich klackert es in der Dunkelheit. Eine große Schattenkrabbe klettert über die Steine, ihre Scheren glänzen kalt.",
+        "en": "Suddenly something clatters in the dark. A big shadow crab climbs over the rocks, its claws gleaming cold."
+      },
+      "audio": { "de": "scene_5.de.mp3", "en": "scene_5.en.mp3" },
+      "anchor": "schattenkrabbe",
+      "map": { "x": 0.58, "y": 0.38 },
+      "then": {
+        "type": "combat",
+        "enemy": { "name": { "de": "Schattenkrabbe", "en": "Shadow Crab" }, "hp": 8, "hitTarget": 9, "damage": 2, "anchor": "schattenkrabbe" },
+        "playerHitDamage": 3,
+        "talkOut": { "stat": "charisma", "target": 11, "next": "scene_5_talk" },
+        "winNext": "scene_5_win"
+      }
+    },
+    "scene_5_win": {
+      "narration": {
+        "de": "Die Schattenkrabbe zieht sich zurück und verschwindet zwischen den Felsen. Der Weg ist frei!",
+        "en": "The shadow crab backs away and disappears between the rocks. The path is clear!"
+      },
+      "audio": { "de": "scene_5_win.de.mp3", "en": "scene_5_win.en.mp3" },
+      "then": { "type": "next", "next": "scene_6" }
+    },
+    "scene_5_talk": {
+      "narration": {
+        "de": "Du sprichst ruhig mit der Krabbe. Sie hat nur Angst im Dunkeln! Friedlich macht sie dir Platz.",
+        "en": "You speak calmly to the crab. It is only afraid of the dark! Peacefully it makes room for you."
+      },
+      "audio": { "de": "scene_5_talk.de.mp3", "en": "scene_5_talk.en.mp3" },
+      "then": { "type": "next", "next": "scene_6" }
+    },
+    "scene_6": {
+      "narration": {
+        "de": "In der Mitte der Höhle liegt er: ein leuchtender Kristall, hell wie ein gefallener Stern. Du hebst ihn vorsichtig auf. Er wärmt deine Hand.",
+        "en": "In the middle of the cave it lies: a glowing crystal, bright as a fallen star. You pick it up carefully. It warms your hand."
+      },
+      "audio": { "de": "scene_6.de.mp3", "en": "scene_6.en.mp3" },
+      "grantItem": "leuchtkristall",
+      "map": { "x": 0.46, "y": 0.22 },
+      "then": { "type": "next", "next": "scene_7" }
+    },
+    "scene_7": {
+      "narration": {
+        "de": "Mit dem Leuchtkristall in der Hand findest du den Weg zurück ans Tageslicht. Die Glühmotte tanzt zum Abschied um deinen Kopf. Was für ein Abenteuer! Fortsetzung folgt …",
+        "en": "With the glowing crystal in your hand, you find your way back to daylight. The glow-moth dances around your head to say goodbye. What an adventure! To be continued …"
+      },
+      "audio": { "de": "scene_7.de.mp3", "en": "scene_7.en.mp3" },
+      "map": { "x": 0.52, "y": 0.08 },
+      "then": { "type": "ending" }
+    }
+  }
+}

@@ -3,6 +3,7 @@
 import charactersJson from "../content/characters.json";
 import episode01Json from "../content/episode-01/episode.json";
 import episode02Json from "../content/episode-02/episode.json";
+import episode03Json from "../content/episode-03/episode.json";
 import manifestJson from "../content/index.json";
 import { asset } from "./generated/assets";
 
@@ -10,34 +11,48 @@ export type ClassId = "krieger" | "magier" | "barde";
 export type Gender = "junge" | "maedchen";
 export type StatId = "staerke" | "magie" | "charisma";
 
+// --- localization ---------------------------------------------------------
+// The app ships German + (for the ep3 A/B test) English. A user-facing value is
+// either a plain string (authored in one language — e.g. the German-only ep1/ep2)
+// or a {de,en} map (bilingual — e.g. ep3). `loc()` resolves it for a language,
+// falling back to German then to whatever is present.
+export type Lang = "de" | "en";
+export type Localized = string | Partial<Record<Lang, string>>;
+export function loc(v: Localized | undefined, lang: Lang): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  return v[lang] ?? v.de ?? Object.values(v)[0] ?? "";
+}
+
 export interface Branch { min: number; max: number; next: string }
-export interface Enemy { name: string; hp: number; hitTarget: number; damage: number; anchor?: string }
+export interface Enemy { name: Localized; hp: number; hitTarget: number; damage: number; anchor?: string }
 export type Then =
   | { type: "next"; next: string }
-  | { type: "minigame"; kind: string; question: string; options: string[]; correct: number; xp: number; next: string }
-  | { type: "skillcheck"; skill: string; prompt: string; branches: Branch[] }
+  | { type: "minigame"; kind: string; question: Localized; options: Localized[]; correct: number; xp: number; next: string }
+  | { type: "skillcheck"; skill: string; prompt: Localized; branches: Branch[] }
   | { type: "combat"; enemy: Enemy; playerHitDamage: number; talkOut?: { stat: StatId; target: number; next: string }; winNext: string }
   | { type: "ending" };
 
-export interface ClassNarration { text: string; audio: string }
+export interface ClassNarration { text: Localized; audio: Localized }
 // Normalized (0–1) position on the episode map. Resolution-independent so the
 // coords survive a map-art swap and the eventual campaign grid-world (B3).
 export interface MapPos { x: number; y: number }
 export interface Scene {
-  narration?: string;
-  audio?: string;
+  narration?: Localized;
+  audio?: Localized;
   narrationByClass?: Record<ClassId, ClassNarration>;
   anchor?: string;
   grantItem?: string;
   map?: MapPos; // present only on SPINE scenes → a node on the map (B3)
   then: Then;
 }
-export interface ItemDef { name: string; slot: string; file: string; desc?: string; bonus?: string }
+export interface ItemDef { name: Localized; slot: string; file: string; desc?: Localized; bonus?: Localized }
 export interface Episode {
   id: string;
   campaign: string;
   episode: number;
-  title: string;
+  title: Localized;
+  languages?: Lang[]; // which languages this episode is authored in (default ["de"])
   startScene: string;
   revealImages?: "afterAudio" | "onStart";
   mapImage?: string; // the episode's overworld map (B3)
@@ -45,12 +60,14 @@ export interface Episode {
   items: Record<string, ItemDef>;
   scenes: Record<string, Scene>;
 }
-export interface ClassDef { name: string; primary: StatId; blurb: string; stats: Record<StatId, number> }
+export interface ClassDef { name: Localized; primary: StatId; blurb: Localized; stats: Record<StatId, number> }
 export interface CharactersConfig {
   stats: StatId[];
+  statLabels: Record<StatId, Localized>;
   baseHp: number;
   classes: Record<ClassId, ClassDef>;
   genders: Gender[];
+  genderLabels: Record<Gender, Localized>;
   avatars: Record<string, { prompt: string; file: string }>;
 }
 
@@ -60,8 +77,13 @@ export const manifest = manifestJson as { episodes: { id: string; title: string;
 const EPISODES: Record<string, Episode> = {
   "episode-01": episode01Json as unknown as Episode,
   "episode-02": episode02Json as unknown as Episode,
+  "episode-03": episode03Json as unknown as Episode,
 };
 export const FIRST_EPISODE = "episode-01";
+// The bilingual A/B-test episode — always selectable on the Sternenreise (even
+// before ep1/ep2 are finished) so it can be played straight away. Remove this
+// constant + its use in HomeScreen to retire the test.
+export const TEST_EPISODE_ID = "episode-03";
 export function getEpisode(id: string): Episode { return EPISODES[id] ?? EPISODES[FIRST_EPISODE]; }
 
 // Episodes in campaign order (by `episode` number).
@@ -91,16 +113,19 @@ export function furthestEpisodeIndex(completed: string[], progressEpId?: string 
 }
 
 export const CLASS_IDS: ClassId[] = ["krieger", "magier", "barde"];
-export const GENDER_LABELS: Record<Gender, string> = { junge: "Junge", maedchen: "Mädchen" };
-export const STAT_LABELS: Record<StatId, string> = { staerke: "Stärke", magie: "Magie", charisma: "Charisma" };
+// Lang-aware labels (names/blurbs live in characters.json, now bilingual).
+export function statLabel(s: StatId, lang: Lang): string { return loc(characters.statLabels[s], lang); }
+export function genderLabel(g: Gender, lang: Lang): string { return loc(characters.genderLabels[g], lang); }
+export function className(c: ClassId, lang: Lang): string { return loc(characters.classes[c].name, lang); }
+export function classBlurb(c: ClassId, lang: Lang): string { return loc(characters.classes[c].blurb, lang); }
 
 // --- asset helpers (return a require() module id, or undefined if not rendered) ---
-export function sceneAudio(epId: string, scene: Scene, cls: ClassId): number | undefined {
-  const file = scene.narrationByClass ? scene.narrationByClass[cls].audio : scene.audio;
+export function sceneAudio(epId: string, scene: Scene, cls: ClassId, lang: Lang): number | undefined {
+  const file = loc(scene.narrationByClass ? scene.narrationByClass[cls].audio : scene.audio, lang);
   return file ? asset(`${epId}/${file}`) : undefined;
 }
-export function sceneText(scene: Scene, cls: ClassId): string {
-  return scene.narrationByClass ? scene.narrationByClass[cls].text : scene.narration ?? "";
+export function sceneText(scene: Scene, cls: ClassId, lang: Lang): string {
+  return loc(scene.narrationByClass ? scene.narrationByClass[cls].text : scene.narration, lang);
 }
 export function anchorImage(ep: Episode, anchorId?: string): number | undefined {
   if (!anchorId) return undefined;

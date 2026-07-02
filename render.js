@@ -83,15 +83,20 @@ const STYLE_MAP =
 
 /* ===========================================================================
  * TTS — ElevenLabs eleven_multilingual_v2, ~10% slow for a young learner.
- * Kept behind one swappable function.
+ * One voice per language so English isn't read with a German accent. The
+ * model is multilingual; only the voice differs. Override via env.
  * ========================================================================= */
 const ELEVEN_MODEL = "eleven_multilingual_v2";
-const DEFAULT_VOICE_ID = "0oTMoyM0wBOiv66gewih"; // native-German; override with ELEVENLABS_VOICE_ID
+const DEFAULT_VOICE_ID = "0oTMoyM0wBOiv66gewih"; // native-German; override with ELEVENLABS_VOICE_ID / _DE
+const DEFAULT_EN_VOICE_ID = "pFZP5JQG7iQjIQuC4Bku"; // warm English ("Lily"); override with ELEVENLABS_VOICE_ID_EN
+const VOICES = {
+  de: process.env.ELEVENLABS_VOICE_ID_DE || process.env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID,
+  en: process.env.ELEVENLABS_VOICE_ID_EN || DEFAULT_EN_VOICE_ID,
+};
 
-async function elevenLabsTTS(text) {
+async function elevenLabsTTS(text, voiceId) {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) throw new Error("ELEVENLABS_API_KEY is not set (add it to .env).");
-  const voiceId = process.env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID;
 
   const res = await apiFetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
@@ -110,6 +115,19 @@ async function elevenLabsTTS(text) {
 }
 
 const synthesizeSpeech = elevenLabsTTS;
+
+/* --- localized values (see src/content.ts loc()) -------------------------- *
+ * A text/audio field is either a plain string (one language — treated as "de")
+ * or a {de,en} map (bilingual). These mirror the app so render + app agree. */
+function langsOf(v) {
+  if (v == null) return [];
+  return typeof v === "string" ? ["de"] : Object.keys(v);
+}
+function locVal(v, lang) {
+  if (v == null) return undefined;
+  if (typeof v === "string") return lang === "de" ? v : undefined;
+  return v[lang];
+}
 
 /* ===========================================================================
  * Image provider — OpenAI gpt-image-1. Returns a PNG Buffer.
@@ -166,17 +184,16 @@ function validateEpisode(ep, id) {
   }
 
   for (const [sid, scene] of Object.entries(scenes)) {
-    // narration + audio, or narrationByClass with text+audio per class
+    // narration + audio, or narrationByClass with text+audio per class.
+    // Text/audio may be localized ({de,en}); the languages of the two must match.
     if (scene.narrationByClass) {
       for (const cls of CLASSES) {
         const v = scene.narrationByClass[cls];
-        if (!v || !v.text || !v.audio) {
-          errors.push(`scene "${sid}".narrationByClass is missing text/audio for "${cls}".`);
-        }
+        if (!v) { errors.push(`scene "${sid}".narrationByClass is missing "${cls}".`); continue; }
+        errors.push(...localizedErrors(`scene "${sid}".narrationByClass.${cls}`, v.text, v.audio));
       }
     } else {
-      if (!scene.narration) errors.push(`scene "${sid}" has no narration.`);
-      if (!scene.audio) errors.push(`scene "${sid}" has no audio filename.`);
+      errors.push(...localizedErrors(`scene "${sid}"`, scene.narration, scene.audio));
     }
 
     if (scene.anchor && !(ep.anchors && ep.anchors[scene.anchor])) {
@@ -229,6 +246,20 @@ function validateEpisode(ep, id) {
   }
 }
 
+// A scene's spoken text and its audio filename must cover the same languages
+// (a {de,en} text needs {de,en} audio files, and vice-versa).
+function localizedErrors(what, text, audio) {
+  const errs = [];
+  if (!text) errs.push(`${what} has no narration text.`);
+  if (!audio) errs.push(`${what} has no audio filename.`);
+  if (!text || !audio) return errs;
+  const tl = langsOf(text);
+  const al = langsOf(audio);
+  for (const l of al) if (!tl.includes(l)) errs.push(`${what}: audio has "${l}" but text does not.`);
+  for (const l of tl) if (!al.includes(l)) errs.push(`${what}: text has "${l}" but audio does not.`);
+  return errs;
+}
+
 // Skillcheck branches must tile 1..20 exactly: no gaps, no overlaps.
 function coverageErrors(branches, sid) {
   const errs = [];
@@ -261,10 +292,10 @@ function reachableScenes(ep) {
 /* ===========================================================================
  * Rendering
  * ========================================================================= */
-async function renderClip(out, text, label) {
+async function renderClip(out, text, label, voiceId) {
   if (fs.existsSync(out)) { console.log(`    audio  skip  ${path.basename(out)}`); return; }
   console.log(`    audio  ▶     ${path.basename(out)}  (${label})`);
-  fs.writeFileSync(out, await synthesizeSpeech(text));
+  fs.writeFileSync(out, await synthesizeSpeech(text, voiceId));
 }
 
 async function renderImage(out, prompt, style, opts, label) {
@@ -275,13 +306,23 @@ async function renderImage(out, prompt, style, opts, label) {
 
 async function renderEpisodeAudio(ep, dir) {
   for (const [sid, scene] of Object.entries(ep.scenes)) {
-    if (scene.narration) await renderClip(path.join(dir, scene.audio), scene.narration, sid);
+    if (scene.narration) await renderLocalizedClip(dir, scene.audio, scene.narration, sid);
     if (scene.narrationByClass) {
       for (const cls of CLASSES) {
         const v = scene.narrationByClass[cls];
-        await renderClip(path.join(dir, v.audio), v.text, `${sid}/${cls}`);
+        await renderLocalizedClip(dir, v.audio, v.text, `${sid}/${cls}`);
       }
     }
+  }
+}
+
+// Render one clip per language present in the audio field, each with its
+// language's voice. Plain-string fields render once as German.
+async function renderLocalizedClip(dir, audio, text, label) {
+  for (const lang of langsOf(audio)) {
+    const file = locVal(audio, lang);
+    const txt = locVal(text, lang);
+    if (file && txt) await renderClip(path.join(dir, file), txt, `${label}/${lang}`, VOICES[lang]);
   }
 }
 
@@ -325,7 +366,7 @@ function updateManifest(episodes) {
     episodes: episodes
       .slice()
       .sort((a, b) => (a.episode || 0) - (b.episode || 0))
-      .map((e) => ({ id: e.id, campaign: e.campaign, episode: e.episode, title: e.title, cover: `${e.id}/cover.png` })),
+      .map((e) => ({ id: e.id, campaign: e.campaign, episode: e.episode, title: locVal(e.title, "de") || e.title, cover: `${e.id}/cover.png` })),
     characters: "characters.json",
   };
   fs.writeFileSync(path.join(CONTENT_DIR, "index.json"), JSON.stringify(manifest, null, 2) + "\n");
@@ -370,7 +411,11 @@ async function main() {
   console.log("Done.");
 }
 
-main().catch((err) => {
-  console.error("\n✖ " + err.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error("\n✖ " + err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = { validateEpisode };

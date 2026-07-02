@@ -7,8 +7,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { Alert, Animated, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Line } from "react-native-svg";
-import { avatarImage, characters, coverImage, episodesInOrder, furthestEpisodeIndex, getEpisode, itemDefAny, itemImageAny, spineNodes, STAT_LABELS, StatId } from "../content";
+import { avatarImage, characters, className, coverImage, episodesInOrder, furthestEpisodeIndex, getEpisode, itemDefAny, itemImageAny, Lang, loc, spineNodes, statLabel, StatId, TEST_EPISODE_ID } from "../content";
 import { useGame } from "../state";
+import { useLang, useT } from "../i18n";
 import { GlassCard, Glow, IconHero, IconStar, Overline } from "../nightshade";
 import { colors, font, radius, space } from "../theme";
 import { Btn } from "../ui";
@@ -16,14 +17,15 @@ import { Btn } from "../ui";
 type TabKey = "story" | "character";
 
 export default function HomeScreen({ onPlay }: { onPlay: () => void }) {
+  const t = useT();
   const [tab, setTab] = useState<TabKey>("story");
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.safe, { paddingTop: insets.top }]}>
       <View style={styles.body}>{tab === "story" ? <ReiseTab onPlay={onPlay} /> : <HeldTab />}</View>
       <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, space.sm) }]}>
-        <TabItem label="Reise" active={tab === "story"} onPress={() => setTab("story")} icon={<IconStar size={24} color={tab === "story" ? colors.gold : colors.textMuted} />} />
-        <TabItem label="Held" active={tab === "character"} onPress={() => setTab("character")} icon={<IconHero size={24} color={tab === "character" ? colors.gold : colors.textMuted} />} />
+        <TabItem label={t.tabReise} active={tab === "story"} onPress={() => setTab("story")} icon={<IconStar size={24} color={tab === "story" ? colors.gold : colors.textMuted} />} />
+        <TabItem label={t.tabHeld} active={tab === "character"} onPress={() => setTab("character")} icon={<IconHero size={24} color={tab === "character" ? colors.gold : colors.textMuted} />} />
       </View>
     </View>
   );
@@ -50,6 +52,8 @@ const BOTTOM_PAD = 290; // empty space below the bottom star so it (and a comple
 let lastFurthest = -1;
 
 function ReiseTab({ onPlay }: { onPlay: () => void }) {
+  const t = useT();
+  const lang = useLang();
   const { character, progress, completed, setProgress } = useGame();
   const { width, height } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
@@ -109,8 +113,8 @@ function ReiseTab({ onPlay }: { onPlay: () => void }) {
   const sceneNo = inProgress ? Math.min(total, Math.max(0, spine.findIndex((n) => n.id === progress!.sceneId)) + 1) : 0;
   const pct = selIsCompleted ? 100 : inProgress ? Math.round((sceneNo / total) * 100) : 0;
   const cover = coverImage(selEp.id);
-  const ctaLabel = selIsCompleted ? "Nochmal hören ✦" : inProgress ? "Weiterspielen ✦" : "Reise beginnen ✦";
-  const statusLabel = selIsCompleted ? "Abgeschlossen ✓" : inProgress ? `Szene ${sceneNo} von ${total}` : "Bereit für die Reise";
+  const ctaLabel = selIsCompleted ? t.ctaReplay : inProgress ? t.ctaContinue : t.ctaBegin;
+  const statusLabel = selIsCompleted ? t.statusCompleted : inProgress ? t.sceneXofY(sceneNo, total) : t.statusReady;
 
   const playSelected = () => {
     // resume the in-progress episode; (re)start completed or fresh ones.
@@ -121,9 +125,9 @@ function ReiseTab({ onPlay }: { onPlay: () => void }) {
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.header}>
-        <Overline color={colors.textDim}>Dein Sternbild</Overline>
+        <Overline color={colors.textDim}>{t.constellation}</Overline>
         <Text style={styles.realm}>Aldoria</Text>
-        <Text style={styles.caption}>✦ …die Reise geht weiter</Text>
+        <Text style={styles.caption}>{t.journeyContinues}</Text>
       </View>
 
       <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ height: contentH }} showsVerticalScrollIndicator={false} onLayout={(e) => setScrollH(e.nativeEvent.layout.height)}>
@@ -154,7 +158,8 @@ function ReiseTab({ onPlay }: { onPlay: () => void }) {
 
         {/* episode star markers (tappable to select / replay) */}
         {episodes.map((ep, p) => {
-          const reached = p <= furthest;
+          // the bilingual test episode is always selectable; others unlock in order.
+          const reached = p <= furthest || ep.id === TEST_EPISODE_ID;
           const isCurrent = p === furthest;
           return (
             <View key={ep.id} style={[styles.markerWrap, { left: px(p) - 48, top: py(p) - MARK / 2 }]}>
@@ -162,11 +167,11 @@ function ReiseTab({ onPlay }: { onPlay: () => void }) {
                 disabled={!reached}
                 onPress={() => setSelected(p)}
                 style={[styles.marker, isCurrent && { opacity: 0 }, !reached && styles.markerLocked, selected === p && !isCurrent && styles.markerSelected]}
-                accessibilityLabel={`Episode ${ep.episode}`}
+                accessibilityLabel={t.episode(ep.episode)}
               >
                 <IconStar size={reached ? 22 : 18} color={reached ? colors.gold : colors.textMuted} />
               </Pressable>
-              {!isCurrent ? <Text style={[styles.markerLabel, !reached && { color: colors.textMuted }]}>{reached ? `Episode ${ep.episode}` : "Bald"}</Text> : null}
+              {!isCurrent ? <Text style={[styles.markerLabel, !reached && { color: colors.textMuted }]}>{reached ? t.episode(ep.episode) : t.locked}</Text> : null}
             </View>
           );
         })}
@@ -176,7 +181,7 @@ function ReiseTab({ onPlay }: { onPlay: () => void }) {
           <Glow size={LOCKET * 2} color={colors.gold} opacity={0.5} style={{ position: "absolute", left: -LOCKET / 2, top: -LOCKET / 2 }} />
           <View style={styles.locket}>{avatar ? <Image source={avatar} style={styles.locketImg} resizeMode="contain" /> : null}</View>
           <View style={styles.youPill}>
-            <Text style={styles.youText}>DU BIST HIER</Text>
+            <Text style={styles.youText}>{t.youAreHere}</Text>
           </View>
         </Animated.View>
       </ScrollView>
@@ -186,9 +191,9 @@ function ReiseTab({ onPlay }: { onPlay: () => void }) {
         <View style={styles.epRow}>
           {cover ? <Image source={cover} style={styles.epThumb} resizeMode="cover" /> : null}
           <View style={{ flex: 1, justifyContent: "center" }}>
-            <Overline>Episode {selEp.episode}</Overline>
+            <Overline>{t.episode(selEp.episode)}</Overline>
             <Text style={styles.epTitle} numberOfLines={2}>
-              {selEp.title}
+              {loc(selEp.title, lang)}
             </Text>
             <View style={styles.progRow}>
               <Text style={styles.progLabel}>{statusLabel}</Text>
@@ -212,7 +217,9 @@ const REL_COLS = 4;
 const REL_MIN = 4;
 
 function HeldTab() {
-  const { character, resetAll } = useGame();
+  const t = useT();
+  const lang = useLang();
+  const { character, resetAll, setLang } = useGame();
   const { width } = useWindowDimensions();
   const [detailId, setDetailId] = useState<string | null>(null);
   const pulse = useRef(new Animated.Value(0)).current;
@@ -239,9 +246,9 @@ function HeldTab() {
   const detail = detailId ? itemDefAny(detailId) : undefined;
 
   const confirmReset = () =>
-    Alert.alert("Neuen Helden erstellen?", "Dein aktueller Held und dein Fortschritt gehen dabei verloren.", [
-      { text: "Abbrechen", style: "cancel" },
-      { text: "Löschen", style: "destructive", onPress: resetAll },
+    Alert.alert(t.resetTitle, t.resetBody, [
+      { text: t.cancel, style: "cancel" },
+      { text: t.delete, style: "destructive", onPress: resetAll },
     ]);
 
   const haloScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
@@ -250,7 +257,7 @@ function HeldTab() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.h1}>Held</Text>
+        <Text style={styles.h1}>{t.held}</Text>
 
         <View style={styles.haloWrap}>
           <Animated.View style={{ position: "absolute", opacity: haloOpacity, transform: [{ scale: haloScale }] }}>
@@ -267,9 +274,9 @@ function HeldTab() {
           })}
           <View style={styles.halo}>{avatar ? <Image source={avatar} style={styles.haloImg} resizeMode="contain" /> : null}</View>
         </View>
-        <Text style={styles.name}>{def.name}</Text>
+        <Text style={styles.name}>{className(character.classId, lang)}</Text>
         <View style={styles.levelPill}>
-          <Text style={styles.levelPillText}>STUFE {character.level}</Text>
+          <Text style={styles.levelPillText}>{t.level(character.level)}</Text>
         </View>
 
         <View style={styles.statsRow}>
@@ -281,25 +288,23 @@ function HeldTab() {
                   {character.stats[s]}
                   {isPrimary ? " ✦" : ""}
                 </Text>
-                <Text style={styles.statLabel}>{STAT_LABELS[s]}</Text>
+                <Text style={styles.statLabel}>{statLabel(s, lang)}</Text>
               </View>
             );
           })}
         </View>
 
         <View style={styles.hpXpRow}>
-          <Text style={styles.hpText}>❤️ {character.maxHp} HP</Text>
+          <Text style={styles.hpText}>{t.hp(character.maxHp)}</Text>
           <View style={{ flex: 1, marginLeft: space.md }}>
-            <Text style={styles.xpLabel}>
-              EP bis Stufe {character.level + 1} · {character.xp}/3
-            </Text>
+            <Text style={styles.xpLabel}>{t.xpToNext(character.level + 1, character.xp)}</Text>
             <View style={styles.track}>
               <View style={[styles.fill, { width: `${xpPct}%`, backgroundColor: colors.violetLight }]} />
             </View>
           </View>
         </View>
 
-        <Overline style={{ marginTop: space.lg, marginBottom: space.sm }}>Sternen-Beutel</Overline>
+        <Overline style={{ marginTop: space.lg, marginBottom: space.sm }}>{t.starPouch}</Overline>
         <View style={styles.relGrid}>
           {Array.from({ length: slotCount }, (_, i) => {
             const id = owned[i];
@@ -311,10 +316,12 @@ function HeldTab() {
             );
           })}
         </View>
-        {owned.length === 0 ? <Text style={styles.empty}>Noch keine Schätze gefunden.</Text> : null}
+        {owned.length === 0 ? <Text style={styles.empty}>{t.noTreasures}</Text> : null}
+
+        <LangToggle value={lang} onChange={setLang} label={t.language} />
 
         <Pressable onPress={confirmReset} hitSlop={8} style={styles.resetLink}>
-          <Text style={styles.resetText}>Neuen Helden erstellen</Text>
+          <Text style={styles.resetText}>{t.newHero}</Text>
         </Pressable>
       </ScrollView>
 
@@ -325,13 +332,30 @@ function HeldTab() {
             <View style={styles.cardImgBox}>
               {itemImageAny(detailId!) ? <Image source={itemImageAny(detailId!)} style={styles.relImg} resizeMode="contain" /> : null}
             </View>
-            <Text style={styles.cardName}>{detail.name}</Text>
-            {detail.bonus ? <Text style={styles.cardBonus}>✨ {detail.bonus}</Text> : null}
-            {detail.desc ? <Text style={styles.cardDesc}>{detail.desc}</Text> : null}
-            <Btn title="Schließen" kind="gold" onPress={() => setDetailId(null)} style={{ marginTop: space.md }} />
+            <Text style={styles.cardName}>{loc(detail.name, lang)}</Text>
+            {detail.bonus ? <Text style={styles.cardBonus}>✨ {loc(detail.bonus, lang)}</Text> : null}
+            {detail.desc ? <Text style={styles.cardDesc}>{loc(detail.desc, lang)}</Text> : null}
+            <Btn title={t.close} kind="gold" onPress={() => setDetailId(null)} style={{ marginTop: space.md }} />
           </GlassCard>
         </Pressable>
       ) : null}
+    </View>
+  );
+}
+
+// DE/EN language switch (drives UI chrome + bilingual-episode narration). Lives
+// on the Held screen for the ep3 A/B test; removable with the test.
+function LangToggle({ value, onChange, label }: { value: Lang; onChange: (l: Lang) => void; label: string }) {
+  return (
+    <View style={styles.langWrap}>
+      <Text style={styles.langLabel}>{label}</Text>
+      <View style={styles.langSeg}>
+        {(["de", "en"] as Lang[]).map((l) => (
+          <Pressable key={l} onPress={() => onChange(l)} style={[styles.langPill, value === l && styles.langPillOn]} accessibilityRole="button" accessibilityLabel={l.toUpperCase()}>
+            <Text style={[styles.langPillText, value === l && styles.langPillTextOn]}>{l.toUpperCase()}</Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
@@ -403,7 +427,15 @@ const styles = StyleSheet.create({
   relImg: { width: "100%", height: "100%" },
   empty: { color: colors.textDim, fontSize: 15, fontFamily: font.body, marginTop: space.md, textAlign: "center" },
 
-  resetLink: { marginTop: space.xl, alignSelf: "center", padding: space.sm },
+  langWrap: { marginTop: space.xl, flexDirection: "row", alignItems: "center", gap: space.sm },
+  langLabel: { color: colors.textDim, fontSize: 13, fontFamily: font.bodyBold },
+  langSeg: { flexDirection: "row", backgroundColor: colors.glassFill, borderWidth: 1, borderColor: colors.glassBorder, borderRadius: radius.pill, padding: 3, gap: 3 },
+  langPill: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: radius.pill },
+  langPillOn: { backgroundColor: "rgba(255,212,121,0.18)", borderWidth: 1, borderColor: colors.gold },
+  langPillText: { color: colors.textMuted, fontSize: 13, fontFamily: font.bodyBold, letterSpacing: 1 },
+  langPillTextOn: { color: colors.gold },
+
+  resetLink: { marginTop: space.lg, alignSelf: "center", padding: space.sm },
   resetText: { color: colors.textMuted, fontSize: 13, fontFamily: font.body, textDecorationLine: "underline" },
 
   overlay: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: "rgba(8,10,32,0.7)", alignItems: "center", justifyContent: "center", padding: space.lg },
